@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://10.138.116.18:8080';
+export const API_BASE_URL = "http://10.138.116.18:8080";
 
 export type User = {
   id: number;
@@ -30,7 +30,7 @@ export type HistoryItem = {
   dosagem: string;
   observacoes?: string;
   horario: string;
-  status: 'PENDENTE' | 'CONFIRMADO' | 'IGNORADO';
+  status: "PENDENTE" | "CONFIRMADO" | "IGNORADO";
   dataConfirmacao?: string;
 };
 
@@ -44,138 +44,138 @@ export type Reminder = {
 
 const sampleUser: User = {
   id: 1,
-  nome: 'Usuario',
-  email: 'usuario@pharmalife.com',
+  nome: "Usuario",
+  email: "usuario@pharmalife.com",
   idade: 68,
-  comorbidade: 'Hipertensao',
+  comorbidade: "Hipertensao",
 };
 
 export const sampleMedications: Medication[] = [
   {
     id: 1,
-    nome: 'Losartana',
-    descricao: '50mg',
-    tipo: 'Diario',
-    complemento: 'Tomar apos o cafe da manha',
-    statusMedicamento: 'proximo',
-    agenda: { id: 1, nome: 'Agenda Principal', horario: '08:00' },
+    nome: "Losartana",
+    descricao: "50mg",
+    tipo: "Diario",
+    complemento: "Tomar apos o cafe da manha",
+    statusMedicamento: "proximo",
+    agenda: { id: 1, nome: "Agenda Principal", horario: "08:00" },
   },
   {
     id: 2,
-    nome: 'Metformina',
-    descricao: '850mg',
-    tipo: '12h',
-    complemento: 'Tomar com alimento',
-    statusMedicamento: 'pendente',
-    agenda: { id: 1, nome: 'Agenda Principal', horario: '12:00' },
+    nome: "Metformina",
+    descricao: "850mg",
+    tipo: "12h",
+    complemento: "Tomar com alimento",
+    statusMedicamento: "pendente",
+    agenda: { id: 1, nome: "Agenda Principal", horario: "12:00" },
   },
   {
     id: 3,
-    nome: 'Vitamina D',
-    descricao: '2000 UI',
-    tipo: 'Semanal',
-    complemento: 'Domingo pela manha',
-    statusMedicamento: 'aberta',
-    agenda: { id: 1, nome: 'Agenda Principal', horario: '09:30' },
+    nome: "Vitamina D",
+    descricao: "2000 UI",
+    tipo: "Semanal",
+    complemento: "Domingo pela manha",
+    statusMedicamento: "aberta",
+    agenda: { id: 1, nome: "Agenda Principal", horario: "09:30" },
   },
 ];
 
 export const sampleHistory: HistoryItem[] = [
   {
     id: 1,
-    nome: 'Losartana',
-    dosagem: '50mg',
-    observacoes: 'Confirmado pelo paciente',
-    horario: '08:00',
-    status: 'CONFIRMADO',
+    nome: "Losartana",
+    dosagem: "50mg",
+    observacoes: "Confirmado pelo paciente",
+    horario: "08:00",
+    status: "CONFIRMADO",
     dataConfirmacao: new Date().toISOString(),
   },
   {
     id: 2,
-    nome: 'Metformina',
-    dosagem: '850mg',
-    observacoes: 'Aguardando confirmacao',
-    horario: '12:00',
-    status: 'PENDENTE',
+    nome: "Metformina",
+    dosagem: "850mg",
+    observacoes: "Aguardando confirmacao",
+    horario: "12:00",
+    status: "PENDENTE",
   },
 ];
 
 export const sampleReminders: Reminder[] = [
   {
     id: 1,
-    titulo: 'Comprar medicamentos',
-    descricao: 'Repor os comprimidos da semana',
+    titulo: "Comprar medicamentos",
+    descricao: "Repor os comprimidos da semana",
     data: new Date().toISOString().slice(0, 10),
-    horario: '17:00',
+    horario: "17:00",
   },
 ];
 
 const storage = {
   get(key: string) {
-    if (typeof window === 'undefined' || !window.localStorage) {
+    if (typeof window === "undefined" || !window.localStorage) {
       return null;
     }
 
     return window.localStorage.getItem(key);
   },
   set(key: string, value: string) {
-    if (typeof window !== 'undefined' && window.localStorage) {
+    if (typeof window !== "undefined" && window.localStorage) {
       window.localStorage.setItem(key, value);
     }
   },
   remove(key: string) {
-    if (typeof window !== 'undefined' && window.localStorage) {
+    if (typeof window !== "undefined" && window.localStorage) {
       window.localStorage.removeItem(key);
     }
   },
 };
 
 export function getStoredUser(): User {
-  const rawUser = storage.get('pharmalife:user');
+  const rawUser = storage.get("pharmalife:user");
   return rawUser ? JSON.parse(rawUser) : sampleUser;
 }
 
 export function setStoredUser(user: User) {
-  storage.set('pharmalife:user', JSON.stringify(user));
+  storage.set("pharmalife:user", JSON.stringify(user));
 }
 
 export function getStoredMedications(): Medication[] {
-  const raw = storage.get('pharmalife:medications');
+  const raw = storage.get("pharmalife:medications");
   return raw ? JSON.parse(raw) : sampleMedications;
 }
 
 export function setStoredMedications(medications: Medication[]) {
-  storage.set('pharmalife:medications', JSON.stringify(medications));
+  storage.set("pharmalife:medications", JSON.stringify(medications));
 }
 
 export function getStoredHistory(): HistoryItem[] {
-  const raw = storage.get('pharmalife:history');
+  const raw = storage.get("pharmalife:history");
   return raw ? JSON.parse(raw) : sampleHistory;
 }
 
 export function setStoredHistory(history: HistoryItem[]) {
-  storage.set('pharmalife:history', JSON.stringify(history));
+  storage.set("pharmalife:history", JSON.stringify(history));
 }
 
 export function getStoredReminders(): Reminder[] {
-  const raw = storage.get('pharmalife:reminders');
+  const raw = storage.get("pharmalife:reminders");
   return raw ? JSON.parse(raw) : sampleReminders;
 }
 
 export function setStoredReminders(reminders: Reminder[]) {
-  storage.set('pharmalife:reminders', JSON.stringify(reminders));
+  storage.set("pharmalife:reminders", JSON.stringify(reminders));
 }
 
 export async function loginUser(email: string, senha: string, admin: boolean) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/usuarios/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, senha, admin }),
     });
 
     if (!response.ok) {
-      throw new Error('Login invalido');
+      throw new Error("Login invalido");
     }
 
     const user = (await response.json()) as User;
@@ -188,16 +188,16 @@ export async function loginUser(email: string, senha: string, admin: boolean) {
   }
 }
 
-export async function registerUser(user: Omit<User, 'id'>) {
+export async function registerUser(user: Omit<User, "id">) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/usuarios`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(user),
     });
 
     if (!response.ok) {
-      throw new Error('Cadastro invalido');
+      throw new Error("Cadastro invalido");
     }
 
     return (await response.json()) as User;
@@ -208,7 +208,11 @@ export async function registerUser(user: Omit<User, 'id'>) {
   }
 }
 
-export function addMedication(input: Omit<Medication, 'id' | 'statusMedicamento' | 'agenda'> & { horario: string }) {
+export function addMedication(
+  input: Omit<Medication, "id" | "statusMedicamento" | "agenda"> & {
+    horario: string;
+  },
+) {
   const medications = getStoredMedications();
   const newMedication: Medication = {
     id: Date.now(),
@@ -216,8 +220,8 @@ export function addMedication(input: Omit<Medication, 'id' | 'statusMedicamento'
     descricao: input.descricao,
     tipo: input.tipo,
     complemento: input.complemento,
-    statusMedicamento: 'proximo',
-    agenda: { id: 1, nome: 'Agenda Principal', horario: input.horario },
+    statusMedicamento: "proximo",
+    agenda: { id: 1, nome: "Agenda Principal", horario: input.horario },
   };
 
   setStoredMedications([newMedication, ...medications]);
@@ -231,8 +235,9 @@ export function markMedicationAsTaken(medication: Medication) {
     nome: medication.nome,
     dosagem: medication.descricao,
     observacoes: medication.complemento,
-    horario: medication.agenda?.horario ?? new Date().toTimeString().slice(0, 5),
-    status: 'CONFIRMADO',
+    horario:
+      medication.agenda?.horario ?? new Date().toTimeString().slice(0, 5),
+    status: "CONFIRMADO",
     dataConfirmacao: new Date().toISOString(),
   };
 
@@ -240,11 +245,21 @@ export function markMedicationAsTaken(medication: Medication) {
   return entry;
 }
 
-export function adherencePercent(medications: Medication[], history: HistoryItem[]) {
+export function adherencePercent(
+  medications: Medication[],
+  history: HistoryItem[],
+) {
   const expected = medications.length * 7;
   if (expected === 0) {
     return 0;
   }
 
-  return Math.min(100, Math.round((history.filter((item) => item.status === 'CONFIRMADO').length / expected) * 100));
+  return Math.min(
+    100,
+    Math.round(
+      (history.filter((item) => item.status === "CONFIRMADO").length /
+        expected) *
+        100,
+    ),
+  );
 }
