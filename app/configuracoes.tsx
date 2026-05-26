@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { Card, PharmaScreen, SectionHeader, pharmaStyles } from '@/components/pharma-layout';
-import { getStoredUser, setStoredUser } from '@/lib/pharmalife';
+import { clearStoredUser, getStoredUser, setStoredUser } from '@/lib/pharmalife';
 
 export default function ConfiguracoesScreen() {
   const user = getStoredUser();
@@ -17,6 +17,11 @@ export default function ConfiguracoesScreen() {
   function handleSave() {
     setStoredUser({ ...user, nome, senha: novaSenha || user.senha });
     setMessage('Perfil atualizado.');
+  }
+
+  function handleLogout() {
+    clearStoredUser();
+    router.replace('/login');
   }
 
   return (
@@ -58,8 +63,8 @@ export default function ConfiguracoesScreen() {
 
       <Card>
         <Text style={pharmaStyles.cardTitle}>Conta</Text>
-        <Pressable onPress={() => router.push('/login')}>
-          <Text style={styles.link}>Fazer login novamente</Text>
+        <Pressable onPress={handleLogout}>
+          <Text style={styles.link}>Sair da conta</Text>
         </Pressable>
         <Pressable style={pharmaStyles.secondaryButton} onPress={() => router.replace('/cadastro')}>
           <Text style={pharmaStyles.secondaryButtonText}>Criar outra conta</Text>

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Card, PharmaScreen, SectionHeader, pharmaStyles } from '@/components/pharma-layout';
 import { loginUser } from '@/lib/pharmalife';
@@ -8,35 +8,61 @@ import { loginUser } from '@/lib/pharmalife';
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [admin, setAdmin] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
   async function handleLogin() {
+    setMessage('');
+
+    if (!email.trim() || !senha.trim()) {
+      setMessage('Informe seu e-mail e sua senha para entrar.');
+      return;
+    }
+
     setLoading(true);
-    await loginUser(email || 'usuario@pharmalife.com', senha || '123456', admin);
-    setLoading(false);
-    router.replace('/');
+    try {
+      await loginUser(email, senha);
+      router.replace('/');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Nao foi possivel fazer login.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <PharmaScreen>
-      <SectionHeader eyebrow="Acesso" title="Entrar" subtitle="Use sua conta PharmaLife para abrir sua agenda de medicamentos." />
+      <SectionHeader
+        eyebrow="Acesso"
+        title="Entrar"
+        subtitle="Use sua conta PharmaLife para abrir sua agenda pessoal de medicamentos."
+      />
 
       <Card>
+        <View style={styles.brandBox}>
+          <Text style={styles.brand}>PharmaLife</Text>
+          <Text style={styles.brandText}>Seus horarios, remedios e historico protegidos em um so lugar.</Text>
+        </View>
+
         <TextInput
           style={pharmaStyles.input}
-          placeholder="E-mail"
+          placeholder="Digite seu e-mail"
           keyboardType="email-address"
           autoCapitalize="none"
+          autoComplete="email"
           value={email}
           onChangeText={setEmail}
         />
-        <TextInput style={pharmaStyles.input} placeholder="Senha" secureTextEntry value={senha} onChangeText={setSenha} />
+        <TextInput
+          style={pharmaStyles.input}
+          placeholder="Digite sua senha"
+          secureTextEntry
+          autoComplete="password"
+          value={senha}
+          onChangeText={setSenha}
+        />
 
-        <View style={styles.switchRow}>
-          <Text style={styles.switchText}>Entrar como administrador</Text>
-          <Switch value={admin} onValueChange={setAdmin} />
-        </View>
+        {message ? <Text style={styles.message}>{message}</Text> : null}
 
         <Pressable style={pharmaStyles.primaryButton} onPress={handleLogin} disabled={loading}>
           <Text style={pharmaStyles.primaryButtonText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
@@ -51,13 +77,26 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  brandBox: {
+    borderWidth: 1,
+    borderColor: '#D8ECFF',
+    borderRadius: 8,
+    backgroundColor: '#EAF6FF',
+    gap: 6,
+    padding: 14,
   },
-  switchText: {
-    color: '#14324A',
+  brand: {
+    color: '#2F80ED',
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  brandText: {
+    color: '#4E7393',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  message: {
+    color: '#C2410C',
     fontWeight: '700',
   },
   link: {

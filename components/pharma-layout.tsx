@@ -20,12 +20,13 @@ const navItems: NavItem[] = [
 
 export function PharmaScreen({ children }: PropsWithChildren) {
   const pathname = usePathname();
+  const isAuthScreen = pathname === '/login' || pathname === '/cadastro';
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.content}>{children}</ScrollView>
+      <ScrollView contentContainerStyle={[styles.content, isAuthScreen && styles.authContent]}>{children}</ScrollView>
 
-      <View style={styles.nav}>
+      {!isAuthScreen ? <View style={styles.nav}>
         {navItems.map((item) => {
           const active = pathname === item.href;
 
@@ -41,7 +42,7 @@ export function PharmaScreen({ children }: PropsWithChildren) {
             </Pressable>
           );
         })}
-      </View>
+      </View> : null}
     </View>
   );
 }
@@ -163,6 +164,11 @@ const styles = StyleSheet.create({
     gap: 18,
     padding: 20,
     paddingBottom: 112,
+  },
+  authContent: {
+    justifyContent: 'center',
+    maxWidth: 520,
+    paddingBottom: 20,
   },
   header: {
     gap: 8,

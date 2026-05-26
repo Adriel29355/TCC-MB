@@ -49,7 +49,6 @@ export default function Layout() {
       <Stack.Screen name="configuracoes" options={{ title: 'Configuracoes' }} />
       <Stack.Screen name="ajuda" options={{ title: 'Ajuda' }} />
       <Stack.Screen name="sobre" options={{ title: 'Sobre' }} />
-      <Stack.Screen name="admin" options={{ title: 'Admin' }} />
       <Stack.Screen name="modal" options={{ title: 'Atendimentos' }} />
     </Stack>
   );

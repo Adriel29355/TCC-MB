@@ -1,4 +1,5 @@
-export const API_BASE_URL = "http://10.138.116.18:8080";
+export const API_BASE_URL =
+  typeof window !== "undefined" ? "http://localhost:8080" : "http://10.0.2.2:8080";
 
 export type User = {
   id: number;
@@ -7,7 +8,6 @@ export type User = {
   senha?: string;
   idade?: number | null;
   comorbidade?: string | null;
-  admin?: boolean;
 };
 
 export type Medication = {
@@ -49,6 +49,8 @@ const sampleUser: User = {
   idade: 68,
   comorbidade: "Hipertensao",
 };
+
+let sessionUser: User | null = null;
 
 export const sampleMedications: Medication[] = [
   {
@@ -130,13 +132,42 @@ const storage = {
   },
 };
 
-export function getStoredUser(): User {
+async function parseApiError(response: Response, fallback: string) {
+  const text = await response.text();
+
+  if (!text) {
+    return fallback;
+  }
+
+  try {
+    const json = JSON.parse(text) as { erro?: string; message?: string };
+    return json.erro || json.message || text;
+  } catch {
+    return text;
+  }
+}
+
+export function getCurrentUser(): User | null {
   const rawUser = storage.get("pharmalife:user");
-  return rawUser ? JSON.parse(rawUser) : sampleUser;
+  return rawUser ? JSON.parse(rawUser) : sessionUser;
+}
+
+export function getStoredUser(): User {
+  return getCurrentUser() ?? sampleUser;
+}
+
+export function isUserAuthenticated() {
+  return Boolean(getCurrentUser());
 }
 
 export function setStoredUser(user: User) {
+  sessionUser = user;
   storage.set("pharmalife:user", JSON.stringify(user));
+}
+
+export function clearStoredUser() {
+  sessionUser = null;
+  storage.remove("pharmalife:user");
 }
 
 export function getStoredMedications(): Medication[] {
@@ -166,46 +197,39 @@ export function setStoredReminders(reminders: Reminder[]) {
   storage.set("pharmalife:reminders", JSON.stringify(reminders));
 }
 
-export async function loginUser(email: string, senha: string, admin: boolean) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/usuarios/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, senha, admin }),
-    });
+export async function loginUser(email: string, senha: string) {
+  const response = await fetch(`${API_BASE_URL}/api/usuarios/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email.trim(), senha }),
+  });
 
-    if (!response.ok) {
-      throw new Error("Login invalido");
-    }
-
-    const user = (await response.json()) as User;
-    setStoredUser({ ...user, admin });
-    return user;
-  } catch {
-    const localUser = { ...sampleUser, email, admin };
-    setStoredUser(localUser);
-    return localUser;
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, "Email ou senha incorretos."));
   }
+
+  const user = (await response.json()) as User;
+  setStoredUser(user);
+  return user;
 }
 
 export async function registerUser(user: Omit<User, "id">) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/usuarios`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(user),
-    });
+  const response = await fetch(`${API_BASE_URL}/api/usuarios`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...user,
+      nome: user.nome.trim(),
+      email: user.email.trim(),
+      comorbidade: user.comorbidade?.trim() || null,
+    }),
+  });
 
-    if (!response.ok) {
-      throw new Error("Cadastro invalido");
-    }
-
-    return (await response.json()) as User;
-  } catch {
-    const localUser = { ...user, id: Date.now() };
-    setStoredUser(localUser);
-    return localUser;
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, "Nao foi possivel criar a conta."));
   }
+
+  return (await response.json()) as User;
 }
 
 export function addMedication(

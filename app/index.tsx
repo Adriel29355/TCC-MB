@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -10,6 +10,7 @@ import {
   getStoredMedications,
   getStoredReminders,
   getStoredUser,
+  isUserAuthenticated,
   markMedicationAsTaken,
   Medication,
 } from '@/lib/pharmalife';
@@ -27,6 +28,10 @@ export default function HomeScreen() {
     const entry = markMedicationAsTaken(medication);
     setHistory([entry, ...history]);
     setMedications([...medications]);
+  }
+
+  if (!isUserAuthenticated()) {
+    return <Redirect href="/login" />;
   }
 
   return (
