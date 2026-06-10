@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput } from 'react-native';
 
 import { Card, PharmaScreen, SectionHeader, pharmaStyles } from '@/components/pharma-layout';
 import { clearStoredUser, getStoredUser, setStoredUser } from '@/lib/pharmalife';
@@ -43,31 +43,11 @@ export default function ConfiguracoesScreen() {
         </Pressable>
       </Card>
 
-      <Card>
-        <Text style={pharmaStyles.cardTitle}>Acessibilidade</Text>
-        <View style={styles.optionRow}>
-          <View>
-            <Text style={styles.optionTitle}>Letras grandes</Text>
-            <Text style={pharmaStyles.small}>Interface mais facil de ler.</Text>
-          </View>
-          <Switch value={largeText} onValueChange={setLargeText} />
-        </View>
-        <View style={styles.optionRow}>
-          <View>
-            <Text style={styles.optionTitle}>Lembretes ativos</Text>
-            <Text style={pharmaStyles.small}>Avisos para horarios importantes.</Text>
-          </View>
-          <Switch value={notifications} onValueChange={setNotifications} />
-        </View>
-      </Card>
 
       <Card>
         <Text style={pharmaStyles.cardTitle}>Conta</Text>
         <Pressable onPress={handleLogout}>
           <Text style={styles.link}>Sair da conta</Text>
-        </Pressable>
-        <Pressable style={pharmaStyles.secondaryButton} onPress={() => router.replace('/cadastro')}>
-          <Text style={pharmaStyles.secondaryButtonText}>Criar outra conta</Text>
         </Pressable>
       </Card>
     </PharmaScreen>

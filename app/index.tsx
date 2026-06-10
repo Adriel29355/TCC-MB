@@ -3,7 +3,7 @@ import { Redirect, router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Card, PharmaScreen, StatCard, pharmaStyles } from '@/components/pharma-layout';
+import { Card, PharmaScreen, pharmaStyles, StatCard } from '@/components/pharma-layout';
 import {
   adherencePercent,
   getStoredHistory,
@@ -39,36 +39,36 @@ export default function HomeScreen() {
       <View style={styles.hero}>
         <View style={styles.heroCopy}>
           <Text style={styles.brandBadge}>PharmaLife</Text>
-          <Text style={styles.heroTitle}>Cuidado com seus remedios, sem complicacao.</Text>
+          <Text style={styles.heroTitle}>Cuidado com seus medicamentos</Text>
           <Text style={styles.heroSubtitle}>
-            Agenda, lembretes e historico em uma experiencia leve para acompanhar sua rotina.
+            Agenda, lembretes, histórico — experiência leve para acompanhar sua rotina.
           </Text>
           <View style={styles.heroActions}>
-            <Pressable style={pharmaStyles.primaryButton} onPress={() => router.push('/adicionar')}>
-              <Text style={pharmaStyles.primaryButtonText}>Adicionar remedio</Text>
+            <Pressable style={styles.primaryButton} onPress={() => router.push('/adicionar')}>
+              <Text style={styles.primaryButtonText}>Adicionar remédio</Text>
             </Pressable>
-            <Pressable style={pharmaStyles.secondaryButton} onPress={() => router.push('/agenda')}>
-              <Text style={pharmaStyles.secondaryButtonText}>Ver agenda</Text>
+            <Pressable style={styles.secondaryButton} onPress={() => router.push('/agenda')}>
+              <Text style={styles.secondaryButtonText}>Ver agenda</Text>
             </Pressable>
           </View>
         </View>
 
         <View style={styles.heroPanel}>
           <Ionicons name="medical-outline" size={32} color="#2F80ED" />
-          <Text style={styles.panelTitle}>Ola, {user.nome}</Text>
-          <Text style={styles.panelText}>Proximo horario: {medications[0]?.agenda?.horario ?? '08:00'}</Text>
+          <Text style={styles.panelTitle}>Olá, {user.nome}</Text>
+          <Text style={styles.panelText}>Próximo horário: {medications[0]?.agenda?.horario ?? '08:00'}</Text>
         </View>
       </View>
 
       <View style={styles.stats}>
         <StatCard label="Tomados" value={confirmed} />
         <StatCard label="Pendentes" value={pending} />
-        <StatCard label="Adesao" value={`${adherence}%`} />
+        <StatCard label="Adesão" value={`${adherence}%`} />
       </View>
 
       <Card>
         <View style={pharmaStyles.row}>
-          <Text style={pharmaStyles.cardTitle}>Proximos medicamentos</Text>
+          <Text style={pharmaStyles.cardTitle}>Próximos medicamentos</Text>
           <Pressable onPress={() => router.push('/adicionar')}>
             <Text style={styles.link}>Adicionar</Text>
           </Pressable>
@@ -95,43 +95,51 @@ export default function HomeScreen() {
       </Card>
 
       <View style={styles.twoColumns}>
-        <Card>
-          <View style={pharmaStyles.row}>
-            <Text style={pharmaStyles.cardTitle}>Historico recente</Text>
-            <Pressable onPress={() => router.push('/historico')}>
-              <Text style={styles.link}>Ver tudo</Text>
-            </Pressable>
-          </View>
-          {history.slice(0, 2).map((item) => (
-            <View key={item.id} style={styles.compactItem}>
-              <Text style={styles.statusDot}>{item.status === 'CONFIRMADO' ? 'C' : 'P'}</Text>
-              <View>
-                <Text style={styles.itemTitle}>{item.nome}</Text>
-                <Text style={pharmaStyles.small}>
-                  {item.dosagem} as {item.horario}
-                </Text>
-              </View>
+        <View style={styles.columnWrapper}>
+          <Card>
+            <View style={pharmaStyles.row}>
+              <Text style={pharmaStyles.cardTitle}>Histórico recente</Text>
+              <Pressable onPress={() => router.push('/historico')}>
+                <Text style={styles.link}>Ver tudo</Text>
+              </Pressable>
             </View>
-          ))}
-        </Card>
+            {history.slice(0, 2).map((item) => (
+              <View key={item.id} style={styles.compactItem}>
+                <View style={styles.statusBadge}>
+                  <Text style={styles.statusDot}>{item.status === 'CONFIRMADO' ? 'C' : 'P'}</Text>
+                </View>
+                <View style={styles.compactInfo}>
+                  <Text style={styles.itemTitle}>{item.nome}</Text>
+                  <Text style={pharmaStyles.small}>
+                    {item.dosagem} às {item.horario}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </Card>
+        </View>
 
-        <Card>
-          <View style={pharmaStyles.row}>
-            <Text style={pharmaStyles.cardTitle}>Lembretes</Text>
-            <Pressable onPress={() => router.push('/agenda')}>
-              <Text style={styles.link}>Agenda</Text>
-            </Pressable>
-          </View>
-          {reminders.slice(0, 2).map((reminder) => (
-            <View key={reminder.id} style={styles.compactItem}>
-              <Text style={styles.reminderDate}>{reminder.horario}</Text>
-              <View>
-                <Text style={styles.itemTitle}>{reminder.titulo}</Text>
-                <Text style={pharmaStyles.small}>{reminder.descricao}</Text>
-              </View>
+        <View style={styles.columnWrapper}>
+          <Card>
+            <View style={pharmaStyles.row}>
+              <Text style={pharmaStyles.cardTitle}>Lembretes</Text>
+              <Pressable onPress={() => router.push('/agenda')}>
+                <Text style={styles.link}>Agenda</Text>
+              </Pressable>
             </View>
-          ))}
-        </Card>
+            {reminders.slice(0, 2).map((reminder) => (
+              <View key={reminder.id} style={styles.compactItem}>
+                <View style={styles.reminderBadge}>
+                  <Text style={styles.reminderDate}>{reminder.horario}</Text>
+                </View>
+                <View style={styles.compactInfo}>
+                  <Text style={styles.itemTitle}>{reminder.titulo}</Text>
+                  <Text style={pharmaStyles.small}>{reminder.descricao}</Text>
+                </View>
+              </View>
+            ))}
+          </Card>
+        </View>
       </View>
     </PharmaScreen>
   );
@@ -182,8 +190,41 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 4,
   },
+  primaryButton: {
+    flex: 1,
+    minWidth: 140,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    backgroundColor: '#2F80ED',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 15,
+  },
+  secondaryButton: {
+    flex: 1,
+    minWidth: 140,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#2F80ED',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  secondaryButtonText: {
+    color: '#2F80ED',
+    fontWeight: '800',
+    fontSize: 15,
+  },
   heroPanel: {
-    width: 230,
+    flex: 1,
+    minWidth: 200,
     minHeight: 150,
     justifyContent: 'center',
     borderWidth: 1,
@@ -211,6 +252,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 14,
+  },
+  columnWrapper: {
+    flex: 1,
+    minWidth: 240,
   },
   link: {
     color: '#2F80ED',
@@ -254,19 +299,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    paddingVertical: 6,
   },
-  statusDot: {
-    width: 28,
-    height: 28,
+  compactInfo: {
+    flex: 1,
+  },
+  statusBadge: {
+    width: 36,
+    height: 36,
     borderRadius: 8,
     backgroundColor: '#DDF8EA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusDot: {
     color: '#12805C',
     fontWeight: '900',
-    lineHeight: 28,
-    textAlign: 'center',
+    fontSize: 14,
+  },
+  reminderBadge: {
+    minWidth: 46,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#EAF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
   },
   reminderDate: {
     color: '#2F80ED',
     fontWeight: '900',
+    fontSize: 13,
   },
 });

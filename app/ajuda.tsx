@@ -47,14 +47,6 @@ export default function AjudaScreen() {
             <Text style={styles.number}>192</Text>
             <Text style={styles.label}>SAMU</Text>
           </View>
-          <View style={styles.emergencyItem}>
-            <Text style={styles.number}>193</Text>
-            <Text style={styles.label}>Bombeiros</Text>
-          </View>
-          <View style={styles.emergencyItem}>
-            <Text style={styles.number}>190</Text>
-            <Text style={styles.label}>Policia</Text>
-          </View>
         </View>
       </Card>
     </PharmaScreen>
