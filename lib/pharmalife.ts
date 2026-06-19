@@ -1,5 +1,4 @@
-export const API_BASE_URL =
-  typeof window !== "undefined" ? "http://localhost:8080" : "http://10.0.2.2:8080";
+export const API_BASE_URL = "https://agenda-mp-3.onrender.com";
 
 export type User = {
   id: number;
