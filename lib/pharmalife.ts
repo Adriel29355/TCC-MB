@@ -204,7 +204,9 @@ export async function loginUser(email: string, senha: string) {
   });
 
   if (!response.ok) {
-    throw new Error(await parseApiError(response, "Email ou senha incorretos."));
+    throw new Error(
+      await parseApiError(response, "Email ou senha incorretos."),
+    );
   }
 
   const user = (await response.json()) as User;
@@ -225,7 +227,9 @@ export async function registerUser(user: Omit<User, "id">) {
   });
 
   if (!response.ok) {
-    throw new Error(await parseApiError(response, "Nao foi possivel criar a conta."));
+    throw new Error(
+      await parseApiError(response, "Nao foi possivel criar a conta."),
+    );
   }
 
   return (await response.json()) as User;
@@ -285,4 +289,9 @@ export function adherencePercent(
         100,
     ),
   );
+}
+export function deleteMedication(id: number): Medication[] {
+  const medications = getStoredMedications().filter((m) => m.id !== id);
+  setStoredMedications(medications);
+  return medications;
 }

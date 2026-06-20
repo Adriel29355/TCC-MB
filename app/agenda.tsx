@@ -1,8 +1,13 @@
-import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from "expo-router";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Card, PharmaScreen, SectionHeader, pharmaStyles } from '@/components/pharma-layout';
-import { getStoredMedications, getStoredReminders } from '@/lib/pharmalife';
+import {
+  Card,
+  PharmaScreen,
+  SectionHeader,
+  pharmaStyles,
+} from "@/components/pharma-layout";
+import { getStoredMedications, getStoredReminders } from "@/lib/pharmalife";
 
 export default function AgendaScreen() {
   const medications = getStoredMedications();
@@ -19,7 +24,7 @@ export default function AgendaScreen() {
       <Card>
         <View style={pharmaStyles.row}>
           <Text style={pharmaStyles.cardTitle}>Medicamentos de hoje</Text>
-          <Pressable onPress={() => router.push('/adicionar')}>
+          <Pressable onPress={() => router.push("/adicionar")}>
             <Text style={styles.link}>Novo</Text>
           </Pressable>
         </View>
@@ -28,14 +33,18 @@ export default function AgendaScreen() {
           <View key={medication.id} style={styles.timelineItem}>
             <View style={styles.line} />
             <View style={styles.timeBox}>
-              <Text style={styles.timeText}>{medication.agenda?.horario ?? '--:--'}</Text>
+              <Text style={styles.timeText}>
+                {medication.agenda?.horario ?? "--:--"}
+              </Text>
             </View>
             <View style={styles.info}>
               <Text style={pharmaStyles.cardTitle}>{medication.nome}</Text>
               <Text style={pharmaStyles.body}>
                 {medication.descricao} • {medication.tipo}
               </Text>
-              {medication.complemento ? <Text style={pharmaStyles.small}>{medication.complemento}</Text> : null}
+              {medication.complemento ? (
+                <Text style={pharmaStyles.small}>{medication.complemento}</Text>
+              ) : null}
             </View>
           </View>
         ))}
@@ -61,49 +70,49 @@ export default function AgendaScreen() {
 
 const styles = StyleSheet.create({
   link: {
-    color: '#2F80ED',
-    fontWeight: '800',
-    textDecorationLine: 'none',
+    color: "#2F80ED",
+    fontWeight: "800",
+    textDecorationLine: "none",
   },
   timelineItem: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
-    position: 'relative',
+    position: "relative",
     paddingVertical: 4,
   },
   line: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     bottom: -10,
     left: 28,
     width: 2,
-    backgroundColor: '#D8ECFF',
+    backgroundColor: "#D8ECFF",
   },
   timeBox: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     width: 58,
     height: 48,
     borderRadius: 8,
-    backgroundColor: '#EAF6FF',
+    backgroundColor: "#EAF6FF",
   },
   timeText: {
-    color: '#2F80ED',
-    fontWeight: '900',
+    color: "#2F80ED",
+    fontWeight: "900",
   },
   info: {
     flex: 1,
     gap: 3,
   },
   reminder: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: '#EDF7FF',
+    borderTopColor: "#EDF7FF",
     paddingTop: 12,
   },
   reminderTitle: {
-    color: '#14324A',
-    fontWeight: '800',
+    color: "#14324A",
+    fontWeight: "800",
   },
 });

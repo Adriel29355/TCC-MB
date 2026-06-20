@@ -1,19 +1,28 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Card, PharmaScreen, SectionHeader, pharmaStyles } from '@/components/pharma-layout';
-import { getStoredHistory, HistoryItem, setStoredHistory } from '@/lib/pharmalife';
+import {
+  Card,
+  PharmaScreen,
+  pharmaStyles,
+  SectionHeader,
+} from "@/components/pharma-layout";
+import {
+  getStoredHistory,
+  HistoryItem,
+  setStoredHistory,
+} from "@/lib/pharmalife";
 
-function nextStatus(status: HistoryItem['status']) {
-  if (status === 'PENDENTE') {
-    return 'CONFIRMADO';
+function nextStatus(status: HistoryItem["status"]) {
+  if (status === "PENDENTE") {
+    return "CONFIRMADO";
   }
 
-  if (status === 'CONFIRMADO') {
-    return 'IGNORADO';
+  if (status === "CONFIRMADO") {
+    return "IGNORADO";
   }
 
-  return 'PENDENTE';
+  return "PENDENTE";
 }
 
 export default function HistoricoScreen() {
@@ -21,7 +30,7 @@ export default function HistoricoScreen() {
 
   function toggleStatus(id: number) {
     const updated: HistoryItem[] = history.map((item) =>
-      item.id === id ? { ...item, status: nextStatus(item.status) } : item
+      item.id === id ? { ...item, status: nextStatus(item.status) } : item,
     );
     setStoredHistory(updated);
     setHistory(updated);
@@ -36,8 +45,14 @@ export default function HistoricoScreen() {
       />
 
       <View style={styles.filters}>
-        <Text style={pharmaStyles.pill}>Confirmados: {history.filter((item) => item.status === 'CONFIRMADO').length}</Text>
-        <Text style={pharmaStyles.pill}>Pendentes: {history.filter((item) => item.status === 'PENDENTE').length}</Text>
+        <Text style={pharmaStyles.pill}>
+          Confirmados:{" "}
+          {history.filter((item) => item.status === "CONFIRMADO").length}
+        </Text>
+        <Text style={pharmaStyles.pill}>
+          Pendentes:{" "}
+          {history.filter((item) => item.status === "PENDENTE").length}
+        </Text>
       </View>
 
       {history.map((item) => (
@@ -49,14 +64,29 @@ export default function HistoricoScreen() {
                 {item.dosagem} as {item.horario}
               </Text>
             </View>
-            <Text style={[styles.status, styles[item.status.toLowerCase() as 'pendente' | 'confirmado' | 'ignorado']]}>
+            <Text
+              style={[
+                styles.status,
+                styles[
+                  item.status.toLowerCase() as
+                    | "pendente"
+                    | "confirmado"
+                    | "ignorado"
+                ],
+              ]}
+            >
               {item.status}
             </Text>
           </View>
 
-          {item.observacoes ? <Text style={pharmaStyles.small}>{item.observacoes}</Text> : null}
+          {item.observacoes ? (
+            <Text style={pharmaStyles.small}>{item.observacoes}</Text>
+          ) : null}
 
-          <Pressable style={pharmaStyles.secondaryButton} onPress={() => toggleStatus(item.id)}>
+          <Pressable
+            style={pharmaStyles.secondaryButton}
+            onPress={() => toggleStatus(item.id)}
+          >
             <Text style={pharmaStyles.secondaryButtonText}>Alterar status</Text>
           </Pressable>
         </Card>
@@ -67,27 +97,27 @@ export default function HistoricoScreen() {
 
 const styles = StyleSheet.create({
   filters: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   status: {
     borderRadius: 8,
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: "900",
     paddingHorizontal: 8,
     paddingVertical: 5,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   pendente: {
-    backgroundColor: '#FEF3C7',
-    color: '#B45309',
+    backgroundColor: "#FEF3C7",
+    color: "#B45309",
   },
   confirmado: {
-    backgroundColor: '#DDF8EA',
-    color: '#12805C',
+    backgroundColor: "#DDF8EA",
+    color: "#12805C",
   },
   ignorado: {
-    backgroundColor: '#FEE2E2',
-    color: '#B91C1C',
+    backgroundColor: "#FEE2E2",
+    color: "#B91C1C",
   },
 });

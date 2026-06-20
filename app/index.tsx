@@ -1,11 +1,17 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Redirect, router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
+import { Redirect, router } from "expo-router";
+import { useMemo, useState } from "react";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Card, PharmaScreen, pharmaStyles, StatCard } from '@/components/pharma-layout';
+import {
+  Card,
+  PharmaScreen,
+  pharmaStyles,
+  StatCard,
+} from "@/components/pharma-layout";
 import {
   adherencePercent,
+  deleteMedication,
   getStoredHistory,
   getStoredMedications,
   getStoredReminders,
@@ -13,14 +19,16 @@ import {
   isUserAuthenticated,
   markMedicationAsTaken,
   Medication,
-} from '@/lib/pharmalife';
+} from "@/lib/pharmalife";
 
 export default function HomeScreen() {
   const [medications, setMedications] = useState(() => getStoredMedications());
   const [history, setHistory] = useState(() => getStoredHistory());
   const reminders = useMemo(() => getStoredReminders(), []);
   const user = getStoredUser();
-  const confirmed = history.filter((item) => item.status === 'CONFIRMADO').length;
+  const confirmed = history.filter(
+    (item) => item.status === "CONFIRMADO",
+  ).length;
   const pending = Math.max(0, medications.length - confirmed);
   const adherence = adherencePercent(medications, history);
 
@@ -28,6 +36,20 @@ export default function HomeScreen() {
     const entry = markMedicationAsTaken(medication);
     setHistory([entry, ...history]);
     setMedications([...medications]);
+  }
+
+  function handleDelete(medication: Medication) {
+    Alert.alert("Excluir medicamento", `Deseja excluir "${medication.nome}"?`, [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Excluir",
+        style: "destructive",
+        onPress: () => {
+          const updated = deleteMedication(medication.id);
+          setMedications(updated);
+        },
+      },
+    ]);
   }
 
   if (!isUserAuthenticated()) {
@@ -41,23 +63,32 @@ export default function HomeScreen() {
           <Text style={styles.brandBadge}>PharmaLife</Text>
           <Text style={styles.heroTitle}>Cuidado com seus medicamentos</Text>
           <Text style={styles.heroSubtitle}>
-            Agenda, lembretes, histórico — experiência leve para acompanhar sua rotina.
+            Agenda, lembretes, histórico — experiência leve para acompanhar sua
+            rotina.
           </Text>
           <View style={styles.heroActions}>
-            <Pressable style={styles.primaryButton} onPress={() => router.push('/adicionar')}>
+            <Pressable
+              style={styles.primaryButton}
+              onPress={() => router.push("/adicionar")}
+            >
               <Text style={styles.primaryButtonText}>Adicionar remédio</Text>
             </Pressable>
-            <Pressable style={styles.secondaryButton} onPress={() => router.push('/agenda')}>
+            <Pressable
+              style={styles.secondaryButton}
+              onPress={() => router.push("/agenda")}
+            >
               <Text style={styles.secondaryButtonText}>Ver agenda</Text>
             </Pressable>
           </View>
         </View>
+      </View>
 
-        <View style={styles.heroPanel}>
-          <Ionicons name="medical-outline" size={32} color="#2F80ED" />
-          <Text style={styles.panelTitle}>Olá, {user.nome}</Text>
-          <Text style={styles.panelText}>Próximo horário: {medications[0]?.agenda?.horario ?? '08:00'}</Text>
-        </View>
+      <View style={styles.heroPanel}>
+        <Ionicons name="medical-outline" size={32} color="#2F80ED" />
+        <Text style={styles.panelTitle}>Olá, {user.nome}</Text>
+        <Text style={styles.panelText}>
+          Próximo horário: {medications[0]?.agenda?.horario ?? "08:00"}
+        </Text>
       </View>
 
       <View style={styles.stats}>
@@ -68,8 +99,10 @@ export default function HomeScreen() {
 
       <Card>
         <View style={pharmaStyles.row}>
-          <Text style={pharmaStyles.cardTitle}>Próximos medicamentos</Text>
-          <Pressable onPress={() => router.push('/adicionar')}>
+          <Text style={[pharmaStyles.cardTitle, styles.rowTitle]}>
+            Próximos medicamentos
+          </Text>
+          <Pressable onPress={() => router.push("/adicionar")}>
             <Text style={styles.link}>Adicionar</Text>
           </Pressable>
         </View>
@@ -78,7 +111,9 @@ export default function HomeScreen() {
           {medications.slice(0, 3).map((medication) => (
             <View key={medication.id} style={styles.medicationItem}>
               <View style={styles.timeBox}>
-                <Text style={styles.timeText}>{medication.agenda?.horario ?? '--:--'}</Text>
+                <Text style={styles.timeText}>
+                  {medication.agenda?.horario ?? "--:--"}
+                </Text>
               </View>
               <View style={styles.medicationInfo}>
                 <Text style={styles.itemTitle}>{medication.nome}</Text>
@@ -86,8 +121,17 @@ export default function HomeScreen() {
                   {medication.descricao} | {medication.tipo}
                 </Text>
               </View>
-              <Pressable style={styles.checkButton} onPress={() => handleTaken(medication)}>
+              <Pressable
+                style={styles.checkButton}
+                onPress={() => handleTaken(medication)}
+              >
                 <Text style={styles.checkText}>OK</Text>
+              </Pressable>
+              <Pressable
+                style={styles.deleteButton}
+                onPress={() => handleDelete(medication)}
+              >
+                <Ionicons name="trash-outline" size={18} color="#E53E3E" />
               </Pressable>
             </View>
           ))}
@@ -98,15 +142,19 @@ export default function HomeScreen() {
         <View style={styles.columnWrapper}>
           <Card>
             <View style={pharmaStyles.row}>
-              <Text style={pharmaStyles.cardTitle}>Histórico recente</Text>
-              <Pressable onPress={() => router.push('/historico')}>
+              <Text style={[pharmaStyles.cardTitle, styles.rowTitle]}>
+                Histórico recente
+              </Text>
+              <Pressable onPress={() => router.push("/historico")}>
                 <Text style={styles.link}>Ver tudo</Text>
               </Pressable>
             </View>
             {history.slice(0, 2).map((item) => (
               <View key={item.id} style={styles.compactItem}>
                 <View style={styles.statusBadge}>
-                  <Text style={styles.statusDot}>{item.status === 'CONFIRMADO' ? 'C' : 'P'}</Text>
+                  <Text style={styles.statusDot}>
+                    {item.status === "CONFIRMADO" ? "C" : "P"}
+                  </Text>
                 </View>
                 <View style={styles.compactInfo}>
                   <Text style={styles.itemTitle}>{item.nome}</Text>
@@ -122,8 +170,10 @@ export default function HomeScreen() {
         <View style={styles.columnWrapper}>
           <Card>
             <View style={pharmaStyles.row}>
-              <Text style={pharmaStyles.cardTitle}>Lembretes</Text>
-              <Pressable onPress={() => router.push('/agenda')}>
+              <Text style={[pharmaStyles.cardTitle, styles.rowTitle]}>
+                Lembretes
+              </Text>
+              <Pressable onPress={() => router.push("/agenda")}>
                 <Text style={styles.link}>Agenda</Text>
               </Pressable>
             </View>
@@ -147,110 +197,113 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   hero: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "column",
     gap: 16,
     borderWidth: 1,
-    borderColor: '#D8ECFF',
+    borderColor: "#D8ECFF",
     borderRadius: 8,
-    backgroundColor: '#EAF6FF',
+    backgroundColor: "#EAF6FF",
     padding: 20,
+    paddingBottom: 80,
     marginTop: 18,
   },
   heroCopy: {
-    flex: 1,
-    minWidth: 260,
+    minWidth: 0,
     gap: 12,
   },
   brandBadge: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    color: '#2F80ED',
-    fontWeight: '900',
+    backgroundColor: "#FFFFFF",
+    color: "#2F80ED",
+    fontWeight: "900",
     paddingHorizontal: 10,
     paddingVertical: 6,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   heroTitle: {
-    color: '#14324A',
+    color: "#14324A",
     fontSize: 34,
-    fontWeight: '900',
+    fontWeight: "900",
     lineHeight: 40,
   },
   heroSubtitle: {
     maxWidth: 520,
-    color: '#4E7393',
+    color: "#4E7393",
     fontSize: 16,
     lineHeight: 23,
   },
   heroActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
     marginTop: 4,
   },
   primaryButton: {
     flex: 1,
     minWidth: 140,
-    alignItems: 'center',
-    justifyContent: 'center',
+    minHeight: 58, // ← adiciona
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 8,
-    backgroundColor: '#2F80ED',
+    backgroundColor: "#2F80ED",
     paddingHorizontal: 18,
     paddingVertical: 12,
   },
   primaryButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
+    color: "#FFFFFF",
+    fontWeight: "800",
     fontSize: 15,
+    textAlign: "center",
   },
   secondaryButton: {
     flex: 1,
     minWidth: 140,
-    alignItems: 'center',
-    justifyContent: 'center',
+    minHeight: 58, // ← adiciona
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: '#2F80ED',
-    backgroundColor: '#FFFFFF',
+    borderColor: "#2F80ED",
+    backgroundColor: "#FFFFFF",
     paddingHorizontal: 18,
     paddingVertical: 12,
   },
   secondaryButtonText: {
-    color: '#2F80ED',
-    fontWeight: '800',
+    color: "#2F80ED",
+    fontWeight: "800",
     fontSize: 15,
+    textAlign: "center",
   },
   heroPanel: {
-    flex: 1,
-    minWidth: 200,
+    minWidth: 0,
     minHeight: 150,
-    justifyContent: 'center',
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: '#D8ECFF',
+    borderColor: "#D8ECFF",
     borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     gap: 8,
     padding: 18,
+    marginTop: 60,
   },
   panelTitle: {
-    color: '#14324A',
+    color: "#14324A",
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: "900",
   },
   panelText: {
-    color: '#5F7F9B',
-    fontWeight: '700',
+    color: "#5F7F9B",
+    fontWeight: "700",
   },
   stats: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   twoColumns: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 14,
   },
   columnWrapper: {
@@ -258,46 +311,56 @@ const styles = StyleSheet.create({
     minWidth: 240,
   },
   link: {
-    color: '#2F80ED',
-    fontWeight: '800',
+    color: "#2F80ED",
+    fontWeight: "800",
+    flexShrink: 0,
+  },
+  rowTitle: {
+    flex: 1,
+    marginRight: 8,
   },
   medicationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   timeBox: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     width: 58,
     height: 48,
     borderRadius: 8,
-    backgroundColor: '#EAF6FF',
+    backgroundColor: "#EAF6FF",
   },
   timeText: {
-    color: '#2F80ED',
-    fontWeight: '900',
+    color: "#2F80ED",
+    fontWeight: "900",
   },
   medicationInfo: {
     flex: 1,
   },
   itemTitle: {
-    color: '#14324A',
-    fontWeight: '800',
+    color: "#14324A",
+    fontWeight: "800",
   },
   checkButton: {
     borderRadius: 8,
-    backgroundColor: '#DDF8EA',
+    backgroundColor: "#DDF8EA",
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   checkText: {
-    color: '#12805C',
-    fontWeight: '900',
+    color: "#12805C",
+    fontWeight: "900",
+  },
+  deleteButton: {
+    borderRadius: 8,
+    backgroundColor: "#FFF5F5",
+    padding: 10,
   },
   compactItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
     paddingVertical: 6,
   },
@@ -308,27 +371,27 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#DDF8EA',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#DDF8EA",
+    alignItems: "center",
+    justifyContent: "center",
   },
   statusDot: {
-    color: '#12805C',
-    fontWeight: '900',
+    color: "#12805C",
+    fontWeight: "900",
     fontSize: 14,
   },
   reminderBadge: {
     minWidth: 46,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#EAF6FF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#EAF6FF",
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 6,
   },
   reminderDate: {
-    color: '#2F80ED',
-    fontWeight: '900',
+    color: "#2F80ED",
+    fontWeight: "900",
     fontSize: 13,
   },
 });
