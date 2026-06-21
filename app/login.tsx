@@ -1,30 +1,39 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router } from "expo-router";
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { Card, PharmaScreen, SectionHeader, pharmaStyles } from '@/components/pharma-layout';
-import { loginUser } from '@/lib/pharmalife';
+import {
+  Card,
+  PharmaScreen,
+  SectionHeader,
+  pharmaStyles,
+} from "@/components/pharma-layout";
+import { loginUser } from "@/lib/pharmalife";
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
   async function handleLogin() {
-    setMessage('');
+    setMessage("");
 
     if (!email.trim() || !senha.trim()) {
-      setMessage('Informe seu e-mail e sua senha para entrar.');
+      setMessage("Informe seu e-mail e sua senha para entrar.");
       return;
     }
 
     setLoading(true);
     try {
       await loginUser(email, senha);
-      router.replace('/');
+      router.replace("/");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Nao foi possivel fazer login.');
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Nao foi possivel fazer login.",
+      );
     } finally {
       setLoading(false);
     }
@@ -41,7 +50,9 @@ export default function LoginScreen() {
       <Card>
         <View style={styles.brandBox}>
           <Text style={styles.brand}>PharmaLife</Text>
-          <Text style={styles.brandText}>Seus horarios, remedios e historico protegidos em um so lugar.</Text>
+          <Text style={styles.brandText}>
+            Seus horarios, remedios e historico protegidos em um so lugar.
+          </Text>
         </View>
 
         <TextInput
@@ -64,11 +75,17 @@ export default function LoginScreen() {
 
         {message ? <Text style={styles.message}>{message}</Text> : null}
 
-        <Pressable style={pharmaStyles.primaryButton} onPress={handleLogin} disabled={loading}>
-          <Text style={pharmaStyles.primaryButtonText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
+        <Pressable
+          style={pharmaStyles.primaryButton}
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          <Text style={pharmaStyles.primaryButtonText}>
+            {loading ? "Entrando..." : "Entrar"}
+          </Text>
         </Pressable>
 
-        <Pressable onPress={() => router.push('/cadastro')}>
+        <Pressable onPress={() => router.push("/cadastro")}>
           <Text style={styles.link}>Criar uma conta</Text>
         </Pressable>
       </Card>
@@ -79,30 +96,30 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   brandBox: {
     borderWidth: 1,
-    borderColor: '#D8ECFF',
+    borderColor: "#D8ECFF",
     borderRadius: 8,
-    backgroundColor: '#EAF6FF',
+    backgroundColor: "#EAF6FF",
     gap: 6,
     padding: 14,
   },
   brand: {
-    color: '#2F80ED',
+    color: "#2F80ED",
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: "900",
   },
   brandText: {
-    color: '#4E7393',
+    color: "#4E7393",
     fontSize: 14,
     lineHeight: 20,
   },
   message: {
-    color: '#C2410C',
-    fontWeight: '700',
+    color: "#C2410C",
+    fontWeight: "700",
   },
   link: {
-    color: '#2F80ED',
-    fontWeight: '800',
-    textAlign: 'center',
-    textDecorationLine: 'none',
+    color: "#2F80ED",
+    fontWeight: "800",
+    textAlign: "center",
+    textDecorationLine: "none",
   },
 });

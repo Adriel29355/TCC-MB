@@ -9,6 +9,7 @@ import {
   pharmaStyles,
   StatCard,
 } from "@/components/pharma-layout";
+import { useAppContext } from "@/contexts/AppContext";
 import {
   adherencePercent,
   deleteMedication,
@@ -31,6 +32,24 @@ export default function HomeScreen() {
   ).length;
   const pending = Math.max(0, medications.length - confirmed);
   const adherence = adherencePercent(medications, history);
+  const { darkMode, largeText } = useAppContext();
+
+  const colors = {
+    heroBg: darkMode ? "#1A2736" : "#EAF6FF",
+    heroBorder: darkMode ? "#2A3F55" : "#D8ECFF",
+    heroTitle: darkMode ? "#E8F4FF" : "#14324A",
+    heroSubtitle: darkMode ? "#8AAFC8" : "#4E7393",
+    panelBg: darkMode ? "#1A2736" : "#FFFFFF",
+    panelBorder: darkMode ? "#2A3F55" : "#D8ECFF",
+    panelTitle: darkMode ? "#E8F4FF" : "#14324A",
+    panelText: darkMode ? "#8AAFC8" : "#5F7F9B",
+    brandBg: darkMode ? "#0F1923" : "#FFFFFF",
+    timeBoxBg: darkMode ? "#0F1923" : "#EAF6FF",
+    itemTitle: darkMode ? "#E8F4FF" : "#14324A",
+    reminderBg: darkMode ? "#0F1923" : "#EAF6FF",
+    secondaryBg: darkMode ? "#1A2736" : "#FFFFFF",
+    secondaryBorder: darkMode ? "#2F80ED" : "#2F80ED",
+  };
 
   function handleTaken(medication: Medication) {
     const entry = markMedicationAsTaken(medication);
@@ -56,13 +75,38 @@ export default function HomeScreen() {
     return <Redirect href="/login" />;
   }
 
+  const fs = largeText
+    ? { title: 40, subtitle: 20, item: 17, small: 15, time: 15 }
+    : { title: 34, subtitle: 16, item: 14, small: 13, time: 14 };
+
   return (
     <PharmaScreen>
-      <View style={styles.hero}>
+      <View
+        style={[
+          styles.hero,
+          { backgroundColor: colors.heroBg, borderColor: colors.heroBorder },
+        ]}
+      >
         <View style={styles.heroCopy}>
-          <Text style={styles.brandBadge}>PharmaLife</Text>
-          <Text style={styles.heroTitle}>Cuidado com seus medicamentos</Text>
-          <Text style={styles.heroSubtitle}>
+          <Text
+            style={[styles.brandBadge, { backgroundColor: colors.brandBg }]}
+          >
+            PharmaLife
+          </Text>
+          <Text
+            style={[
+              styles.heroTitle,
+              { color: colors.heroTitle, fontSize: fs.title },
+            ]}
+          >
+            Cuidado com seus medicamentos
+          </Text>
+          <Text
+            style={[
+              styles.heroSubtitle,
+              { color: colors.heroSubtitle, fontSize: fs.subtitle },
+            ]}
+          >
             Agenda, lembretes, histórico — experiência leve para acompanhar sua
             rotina.
           </Text>
@@ -71,22 +115,59 @@ export default function HomeScreen() {
               style={styles.primaryButton}
               onPress={() => router.push("/adicionar")}
             >
-              <Text style={styles.primaryButtonText}>Adicionar remédio</Text>
+              <Text
+                style={[
+                  styles.primaryButtonText,
+                  largeText && { fontSize: 18 },
+                ]}
+              >
+                Adicionar remédio
+              </Text>
             </Pressable>
             <Pressable
-              style={styles.secondaryButton}
+              style={[
+                styles.secondaryButton,
+                {
+                  backgroundColor: colors.secondaryBg,
+                  borderColor: colors.secondaryBorder,
+                },
+              ]}
               onPress={() => router.push("/agenda")}
             >
-              <Text style={styles.secondaryButtonText}>Ver agenda</Text>
+              <Text
+                style={[
+                  styles.secondaryButtonText,
+                  largeText && { fontSize: 18 },
+                ]}
+              >
+                Ver agenda
+              </Text>
             </Pressable>
           </View>
         </View>
       </View>
 
-      <View style={styles.heroPanel}>
+      <View
+        style={[
+          styles.heroPanel,
+          { backgroundColor: colors.panelBg, borderColor: colors.panelBorder },
+        ]}
+      >
         <Ionicons name="medical-outline" size={32} color="#2F80ED" />
-        <Text style={styles.panelTitle}>Olá, {user.nome}</Text>
-        <Text style={styles.panelText}>
+        <Text
+          style={[
+            styles.panelTitle,
+            { color: colors.panelTitle, fontSize: largeText ? 24 : 20 },
+          ]}
+        >
+          Olá, {user.nome}
+        </Text>
+        <Text
+          style={[
+            styles.panelText,
+            { color: colors.panelText, fontSize: largeText ? 17 : 14 },
+          ]}
+        >
           Próximo horário: {medications[0]?.agenda?.horario ?? "08:00"}
         </Text>
       </View>
@@ -99,7 +180,14 @@ export default function HomeScreen() {
 
       <Card>
         <View style={pharmaStyles.row}>
-          <Text style={[pharmaStyles.cardTitle, styles.rowTitle]}>
+          <Text
+            style={[
+              pharmaStyles.cardTitle,
+              styles.rowTitle,
+              darkMode && { color: "#E8F4FF" },
+              largeText && { fontSize: 22 },
+            ]}
+          >
             Próximos medicamentos
           </Text>
           <Pressable onPress={() => router.push("/adicionar")}>
@@ -110,14 +198,29 @@ export default function HomeScreen() {
         <View style={pharmaStyles.list}>
           {medications.slice(0, 3).map((medication) => (
             <View key={medication.id} style={styles.medicationItem}>
-              <View style={styles.timeBox}>
-                <Text style={styles.timeText}>
+              <View
+                style={[styles.timeBox, { backgroundColor: colors.timeBoxBg }]}
+              >
+                <Text style={[styles.timeText, { fontSize: fs.time }]}>
                   {medication.agenda?.horario ?? "--:--"}
                 </Text>
               </View>
               <View style={styles.medicationInfo}>
-                <Text style={styles.itemTitle}>{medication.nome}</Text>
-                <Text style={pharmaStyles.body}>
+                <Text
+                  style={[
+                    styles.itemTitle,
+                    { color: colors.itemTitle, fontSize: fs.item },
+                  ]}
+                >
+                  {medication.nome}
+                </Text>
+                <Text
+                  style={[
+                    pharmaStyles.body,
+                    darkMode && { color: "#8AAFC8" },
+                    largeText && { fontSize: fs.small },
+                  ]}
+                >
                   {medication.descricao} | {medication.tipo}
                 </Text>
               </View>
@@ -125,7 +228,9 @@ export default function HomeScreen() {
                 style={styles.checkButton}
                 onPress={() => handleTaken(medication)}
               >
-                <Text style={styles.checkText}>OK</Text>
+                <Text style={[styles.checkText, largeText && { fontSize: 16 }]}>
+                  OK
+                </Text>
               </Pressable>
               <Pressable
                 style={styles.deleteButton}
@@ -142,7 +247,14 @@ export default function HomeScreen() {
         <View style={styles.columnWrapper}>
           <Card>
             <View style={pharmaStyles.row}>
-              <Text style={[pharmaStyles.cardTitle, styles.rowTitle]}>
+              <Text
+                style={[
+                  pharmaStyles.cardTitle,
+                  styles.rowTitle,
+                  darkMode && { color: "#E8F4FF" },
+                  largeText && { fontSize: 20 },
+                ]}
+              >
                 Histórico recente
               </Text>
               <Pressable onPress={() => router.push("/historico")}>
@@ -152,13 +264,28 @@ export default function HomeScreen() {
             {history.slice(0, 2).map((item) => (
               <View key={item.id} style={styles.compactItem}>
                 <View style={styles.statusBadge}>
-                  <Text style={styles.statusDot}>
+                  <Text
+                    style={[styles.statusDot, largeText && { fontSize: 17 }]}
+                  >
                     {item.status === "CONFIRMADO" ? "C" : "P"}
                   </Text>
                 </View>
                 <View style={styles.compactInfo}>
-                  <Text style={styles.itemTitle}>{item.nome}</Text>
-                  <Text style={pharmaStyles.small}>
+                  <Text
+                    style={[
+                      styles.itemTitle,
+                      { color: colors.itemTitle, fontSize: fs.item },
+                    ]}
+                  >
+                    {item.nome}
+                  </Text>
+                  <Text
+                    style={[
+                      pharmaStyles.small,
+                      darkMode && { color: "#8AAFC8" },
+                      largeText && { fontSize: fs.small },
+                    ]}
+                  >
                     {item.dosagem} às {item.horario}
                   </Text>
                 </View>
@@ -170,7 +297,14 @@ export default function HomeScreen() {
         <View style={styles.columnWrapper}>
           <Card>
             <View style={pharmaStyles.row}>
-              <Text style={[pharmaStyles.cardTitle, styles.rowTitle]}>
+              <Text
+                style={[
+                  pharmaStyles.cardTitle,
+                  styles.rowTitle,
+                  darkMode && { color: "#E8F4FF" },
+                  largeText && { fontSize: 20 },
+                ]}
+              >
                 Lembretes
               </Text>
               <Pressable onPress={() => router.push("/agenda")}>
@@ -179,12 +313,36 @@ export default function HomeScreen() {
             </View>
             {reminders.slice(0, 2).map((reminder) => (
               <View key={reminder.id} style={styles.compactItem}>
-                <View style={styles.reminderBadge}>
-                  <Text style={styles.reminderDate}>{reminder.horario}</Text>
+                <View
+                  style={[
+                    styles.reminderBadge,
+                    { backgroundColor: colors.reminderBg },
+                  ]}
+                >
+                  <Text
+                    style={[styles.reminderDate, largeText && { fontSize: 15 }]}
+                  >
+                    {reminder.horario}
+                  </Text>
                 </View>
                 <View style={styles.compactInfo}>
-                  <Text style={styles.itemTitle}>{reminder.titulo}</Text>
-                  <Text style={pharmaStyles.small}>{reminder.descricao}</Text>
+                  <Text
+                    style={[
+                      styles.itemTitle,
+                      { color: colors.itemTitle, fontSize: fs.item },
+                    ]}
+                  >
+                    {reminder.titulo}
+                  </Text>
+                  <Text
+                    style={[
+                      pharmaStyles.small,
+                      darkMode && { color: "#8AAFC8" },
+                      largeText && { fontSize: fs.small },
+                    ]}
+                  >
+                    {reminder.descricao}
+                  </Text>
                 </View>
               </View>
             ))}
@@ -242,7 +400,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     flex: 1,
     minWidth: 140,
-    minHeight: 58, // ← adiciona
+    minHeight: 58,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 8,
@@ -259,7 +417,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     flex: 1,
     minWidth: 140,
-    minHeight: 58, // ← adiciona
+    minHeight: 58,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 8,
@@ -285,7 +443,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     gap: 8,
     padding: 18,
-    marginTop: 60,
+    marginTop: 10, // ← era 60, diminui pra 30
   },
   panelTitle: {
     color: "#14324A",
