@@ -17,8 +17,13 @@ export default function AdicionarScreen() {
   const [frequencia, setFrequencia] = useState("Diario");
   const [observacao, setObservacao] = useState("");
 
-  function handleSave() {
-    addMedication({
+  const [loading, setLoading] = useState(false);
+const [message, setMessage] = useState("");
+
+async function handleSave() {
+  setLoading(true);
+  try {
+    await addMedication({
       nome: nome || "Novo medicamento",
       descricao: dosagem || "1 comprimido",
       horario: horario || "08:00",
@@ -26,7 +31,14 @@ export default function AdicionarScreen() {
       complemento: observacao || "Sem observacao",
     });
     router.replace("/agenda");
+  } catch (error) {
+    setMessage(
+      error instanceof Error ? error.message : "Nao foi possivel salvar."
+    );
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <PharmaScreen>
@@ -69,9 +81,13 @@ export default function AdicionarScreen() {
           multiline
         />
 
-        <Pressable style={pharmaStyles.primaryButton} onPress={handleSave}>
-          <Text style={pharmaStyles.primaryButtonText}>Salvar medicamento</Text>
-        </Pressable>
+        {message ? <Text style={{ color: "#C2410C", fontWeight: "700" }}>{message}</Text> : null}
+
+<Pressable style={pharmaStyles.primaryButton} onPress={handleSave} disabled={loading}>
+  <Text style={pharmaStyles.primaryButtonText}>
+    {loading ? "Salvando..." : "Salvar medicamento"}
+  </Text>
+</Pressable>
       </Card>
     </PharmaScreen>
   );
