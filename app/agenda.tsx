@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
@@ -10,8 +11,21 @@ import {
 import { getStoredMedications, getStoredReminders } from "@/lib/pharmalife";
 
 export default function AgendaScreen() {
-  const medications = getStoredMedications();
-  const reminders = getStoredReminders();
+const [medications, setMedications] = useState<any[]>([]);
+const reminders = getStoredReminders();
+
+useEffect(() => {
+  loadMedications();
+}, []);
+
+async function loadMedications() {
+  try {
+    const meds = await getStoredMedications();
+    setMedications(meds);
+  } catch (error) {
+    console.error("Erro ao carregar medicamentos:", error);
+  }
+}
 
   return (
     <PharmaScreen>

@@ -40,6 +40,13 @@ export type Reminder = {
   data: string;
   horario: string;
 };
+type Agenda = {
+  id: number;
+  nome: string;
+  dosagem: string;
+  horario: string;
+  observacoes: string;
+};
 
 const sampleUser: User = {
   id: 1,
@@ -78,26 +85,6 @@ export const sampleMedications: Medication[] = [
     complemento: "Domingo pela manha",
     statusMedicamento: "aberta",
     agenda: { id: 1, nome: "Agenda Principal", horario: "09:30" },
-  },
-];
-
-export const sampleHistory: HistoryItem[] = [
-  {
-    id: 1,
-    nome: "Losartana",
-    dosagem: "50mg",
-    observacoes: "Confirmado pelo paciente",
-    horario: "08:00",
-    status: "CONFIRMADO",
-    dataConfirmacao: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    nome: "Metformina",
-    dosagem: "850mg",
-    observacoes: "Aguardando confirmacao",
-    horario: "12:00",
-    status: "PENDENTE",
   },
 ];
 
@@ -145,16 +132,43 @@ async function parseApiError(response: Response, fallback: string) {
     return text;
   }
 }
+async function getUserAgenda(): Promise<Agenda> {
+  const user = getCurrentUser();
 
+  if (!user) {
+    throw new Error("Usuário não autenticado.");
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/usuarios/${user.id}/agenda`
+  );
+
+  if (!response.ok) {
+    throw new Error("Não foi possível localizar a agenda.");
+  }
+
+  const agendas = (await response.json()) as Agenda[];
+
+  if (agendas.length === 0) {
+    throw new Error("Usuário não possui agenda.");
+  }
+
+  return agendas[0];
+}
 export function getCurrentUser(): User | null {
   const rawUser = storage.get("pharmalife:user");
   return rawUser ? JSON.parse(rawUser) : sessionUser;
 }
 
 export function getStoredUser(): User {
-  return getCurrentUser() ?? sampleUser;
-}
+  const user = getCurrentUser();
 
+  if (!user) {
+    throw new Error("Usuário não autenticado.");
+  }
+
+  return user;
+}
 export function isUserAuthenticated() {
   return Boolean(getCurrentUser());
 }
@@ -169,22 +183,37 @@ export function clearStoredUser() {
   storage.remove("pharmalife:user");
 }
 
-export function getStoredMedications(): Medication[] {
-  const raw = storage.get("pharmalife:medications");
-  return raw ? JSON.parse(raw) : sampleMedications;
-}
+export async function getStoredMedications() {
 
+  const agenda = await getUserAgenda();
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/agenda/${agenda.id}/medicamentos`
+  );
+
+  if (!response.ok) {
+    throw new Error("Erro ao carregar medicamentos.");
+  }
+
+  return (await response.json()) as Medication[];
+}
 export function setStoredMedications(medications: Medication[]) {
   storage.set("pharmalife:medications", JSON.stringify(medications));
 }
+export async function getStoredHistory(): Promise<HistoryItem[]> {
+  const user = getStoredUser();
 
-export function getStoredHistory(): HistoryItem[] {
-  const raw = storage.get("pharmalife:history");
-  return raw ? JSON.parse(raw) : sampleHistory;
-}
+  const response = await fetch(
+    `${API_BASE_URL}/api/usuarios/${user.id}/historico`
+  );
 
-export function setStoredHistory(history: HistoryItem[]) {
-  storage.set("pharmalife:history", JSON.stringify(history));
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(response, "Erro ao carregar histórico.")
+    );
+  }
+
+  return (await response.json()) as HistoryItem[];
 }
 
 export function getStoredReminders(): Reminder[] {
@@ -235,41 +264,99 @@ export async function registerUser(user: Omit<User, "id">) {
   return (await response.json()) as User;
 }
 
-export function addMedication(
-  input: Omit<Medication, "id" | "statusMedicamento" | "agenda"> & {
+export async function addMedication(
+  input: {
+    nome: string;
+    descricao: string;
+    tipo: string;
+    complemento?: string;
     horario: string;
   },
 ) {
-  const medications = getStoredMedications();
-  const newMedication: Medication = {
-    id: Date.now(),
-    nome: input.nome,
-    descricao: input.descricao,
-    tipo: input.tipo,
-    complemento: input.complemento,
-    statusMedicamento: "proximo",
-    agenda: { id: 1, nome: "Agenda Principal", horario: input.horario },
-  };
 
-  setStoredMedications([newMedication, ...medications]);
-  return newMedication;
+  const agenda = await getUserAgenda();
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/agenda/${agenda.id}/medicamentos`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        nome: input.nome,
+        descricao: input.descricao,
+        tipo: input.tipo,
+        complemento: input.complemento,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        "Não foi possível cadastrar medicamento."
+      )
+    );
+  }
+
+  return await response.json();
 }
+export async function markMedicationAsTaken(
+  medication: Medication
+): Promise<HistoryItem> {
 
-export function markMedicationAsTaken(medication: Medication) {
-  const history = getStoredHistory();
-  const entry: HistoryItem = {
-    id: Date.now(),
-    nome: medication.nome,
-    dosagem: medication.descricao,
-    observacoes: medication.complemento,
-    horario:
-      medication.agenda?.horario ?? new Date().toTimeString().slice(0, 5),
-    status: "CONFIRMADO",
-    dataConfirmacao: new Date().toISOString(),
-  };
+  const agenda = await getUserAgenda();
 
-  setStoredHistory([entry, ...history]);
-  return entry;
+  // 1 - registra no histórico
+
+  const registrar = await fetch(
+    `${API_BASE_URL}/api/agenda/${agenda.id}/medicamentos/${medication.id}/historico`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        nome: medication.nome,
+        dosagem: medication.descricao,
+        observacoes: medication.complemento ?? "",
+        horario: medication.agenda?.horario ?? "08:00",
+      }),
+    }
+  );
+
+  if (!registrar.ok) {
+    throw new Error(
+      await parseApiError(
+        registrar,
+        "Erro ao registrar histórico."
+      )
+    );
+  }
+
+  const historico = (await registrar.json()) as HistoryItem;
+
+  // 2 - confirma o uso
+
+  const confirmar = await fetch(
+    `${API_BASE_URL}/api/historico/${historico.id}/confirmar`,
+    {
+      method: "PATCH",
+    }
+  );
+
+  if (!confirmar.ok) {
+    throw new Error(
+      await parseApiError(
+        confirmar,
+        "Erro ao confirmar medicamento."
+      )
+    );
+  }
+
+  return (await confirmar.json()) as HistoryItem;
 }
 
 export function adherencePercent(
@@ -290,8 +377,18 @@ export function adherencePercent(
     ),
   );
 }
-export function deleteMedication(id: number): Medication[] {
-  const medications = getStoredMedications().filter((m) => m.id !== id);
-  setStoredMedications(medications);
-  return medications;
+export async function deleteMedication(id: number) {
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/medicamentos/${id}`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Não foi possível excluir o medicamento.");
+  }
+
+  return true;
 }
