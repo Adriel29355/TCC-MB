@@ -6,8 +6,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   Card,
   PharmaScreen,
-  pharmaStyles,
   StatCard,
+  usePharmaStyles,
 } from "@/components/pharma-layout";
 import { useAppContext } from "@/contexts/AppContext";
 import { confirmDialog } from "@/lib/confirm-dialog";
@@ -34,26 +34,32 @@ export default function HomeScreen() {
   const pending = Math.max(0, medications.length - confirmed);
   const adherence = adherencePercent(medications, history);
   const { darkMode, largeText } = useAppContext();
+  const ps = usePharmaStyles();
 
   useEffect(() => {
     fetchMedications().then(setMedications);
   }, []);
 
   const colors = {
-    heroBg: darkMode ? "#1A2736" : "#EAF6FF",
-    heroBorder: darkMode ? "#2A3F55" : "#D8ECFF",
+    heroBg: darkMode ? "#0D1E2D" : "#EAF6FF",
+    heroBorder: darkMode ? "#1E3448" : "#D8ECFF",
     heroTitle: darkMode ? "#E8F4FF" : "#14324A",
-    heroSubtitle: darkMode ? "#8AAFC8" : "#4E7393",
-    panelBg: darkMode ? "#1A2736" : "#FFFFFF",
-    panelBorder: darkMode ? "#2A3F55" : "#D8ECFF",
+    heroSubtitle: darkMode ? "#7FA8C8" : "#4E7393",
+    panelBg: darkMode ? "#111E2D" : "#FFFFFF",
+    panelBorder: darkMode ? "#1E3448" : "#D8ECFF",
     panelTitle: darkMode ? "#E8F4FF" : "#14324A",
-    panelText: darkMode ? "#8AAFC8" : "#5F7F9B",
-    brandBg: darkMode ? "#0F1923" : "#FFFFFF",
-    timeBoxBg: darkMode ? "#0F1923" : "#EAF6FF",
-    itemTitle: darkMode ? "#E8F4FF" : "#14324A",
-    reminderBg: darkMode ? "#0F1923" : "#EAF6FF",
-    secondaryBg: darkMode ? "#1A2736" : "#FFFFFF",
-    secondaryBorder: darkMode ? "#2F80ED" : "#2F80ED",
+    panelText: darkMode ? "#7FA8C8" : "#5F7F9B",
+    brandBg: darkMode ? "#0B1520" : "#FFFFFF",
+    timeBoxBg: darkMode ? "#0D2238" : "#EAF6FF",
+    itemTitle: darkMode ? "#C8E0F4" : "#14324A",
+    reminderBg: darkMode ? "#0D2238" : "#EAF6FF",
+    secondaryBg: darkMode ? "#111E2D" : "#FFFFFF",
+    secondaryBorder: "#2F80ED",
+    checkBg: darkMode ? "#0A2A1A" : "#DDF8EA",
+    checkText: darkMode ? "#34D399" : "#12805C",
+    deleteBg: darkMode ? "#2A0A0A" : "#FFF5F5",
+    statusBadgeBg: darkMode ? "#0A2A1A" : "#DDF8EA",
+    statusDotColor: darkMode ? "#34D399" : "#12805C",
   };
 
   async function handleTaken(medication: Medication) {
@@ -199,12 +205,11 @@ export default function HomeScreen() {
       </View>
 
       <Card>
-        <View style={pharmaStyles.row}>
+        <View style={ps.row}>
           <Text
             style={[
-              pharmaStyles.cardTitle,
+              ps.cardTitle,
               styles.rowTitle,
-              darkMode && { color: "#E8F4FF" },
               largeText && { fontSize: 22 },
             ]}
           >
@@ -215,7 +220,7 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        <View style={pharmaStyles.list}>
+        <View style={ps.list}>
           {medications.slice(0, 3).map((medication) => (
             <View key={medication.id} style={styles.medicationItem}>
               <View
@@ -234,37 +239,45 @@ export default function HomeScreen() {
                 >
                   {medication.nome}
                 </Text>
-                <Text
-                  style={[
-                    pharmaStyles.body,
-                    darkMode && { color: "#8AAFC8" },
-                    largeText && { fontSize: fs.small },
-                  ]}
-                >
+                <Text style={[ps.body, largeText && { fontSize: fs.small }]}>
                   {medication.descricao} | {medication.tipo}
                 </Text>
               </View>
               <Pressable
-                style={styles.checkButton}
+                style={[
+                  styles.checkButton,
+                  { backgroundColor: colors.checkBg },
+                ]}
                 onPress={() => handleTaken(medication)}
               >
-                <Text style={[styles.checkText, largeText && { fontSize: 16 }]}>
+                <Text
+                  style={[
+                    styles.checkText,
+                    { color: colors.checkText },
+                    largeText && { fontSize: 16 },
+                  ]}
+                >
                   OK
                 </Text>
               </Pressable>
               <Pressable
-                style={styles.deleteButton}
+                style={[
+                  styles.deleteButton,
+                  { backgroundColor: colors.deleteBg },
+                ]}
                 onPress={() => handleDelete(medication)}
               >
-                <Ionicons name="trash-outline" size={18} color="#E53E3E" />
+                <Ionicons
+                  name="trash-outline"
+                  size={18}
+                  color={darkMode ? "#F87171" : "#E53E3E"}
+                />
               </Pressable>
             </View>
           ))}
 
           {medications.length === 0 && (
-            <Text style={pharmaStyles.body}>
-              Nenhum medicamento cadastrado.
-            </Text>
+            <Text style={ps.body}>Nenhum medicamento cadastrado.</Text>
           )}
         </View>
       </Card>
@@ -272,12 +285,11 @@ export default function HomeScreen() {
       <View style={styles.twoColumns}>
         <View style={styles.columnWrapper}>
           <Card>
-            <View style={pharmaStyles.row}>
+            <View style={ps.row}>
               <Text
                 style={[
-                  pharmaStyles.cardTitle,
+                  ps.cardTitle,
                   styles.rowTitle,
-                  darkMode && { color: "#E8F4FF" },
                   largeText && { fontSize: 20 },
                 ]}
               >
@@ -289,9 +301,18 @@ export default function HomeScreen() {
             </View>
             {history.slice(0, 2).map((item) => (
               <View key={item.id} style={styles.compactItem}>
-                <View style={styles.statusBadge}>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: colors.statusBadgeBg },
+                  ]}
+                >
                   <Text
-                    style={[styles.statusDot, largeText && { fontSize: 17 }]}
+                    style={[
+                      styles.statusDot,
+                      { color: colors.statusDotColor },
+                      largeText && { fontSize: 17 },
+                    ]}
                   >
                     {item.status === "CONFIRMADO" ? "C" : "P"}
                   </Text>
@@ -305,13 +326,7 @@ export default function HomeScreen() {
                   >
                     {item.nome}
                   </Text>
-                  <Text
-                    style={[
-                      pharmaStyles.small,
-                      darkMode && { color: "#8AAFC8" },
-                      largeText && { fontSize: fs.small },
-                    ]}
-                  >
+                  <Text style={[ps.small, largeText && { fontSize: fs.small }]}>
                     {item.dosagem} às {item.horario}
                   </Text>
                 </View>
@@ -322,12 +337,11 @@ export default function HomeScreen() {
 
         <View style={styles.columnWrapper}>
           <Card>
-            <View style={pharmaStyles.row}>
+            <View style={ps.row}>
               <Text
                 style={[
-                  pharmaStyles.cardTitle,
+                  ps.cardTitle,
                   styles.rowTitle,
-                  darkMode && { color: "#E8F4FF" },
                   largeText && { fontSize: 20 },
                 ]}
               >
@@ -360,13 +374,7 @@ export default function HomeScreen() {
                   >
                     {reminder.titulo}
                   </Text>
-                  <Text
-                    style={[
-                      pharmaStyles.small,
-                      darkMode && { color: "#8AAFC8" },
-                      largeText && { fontSize: fs.small },
-                    ]}
-                  >
+                  <Text style={[ps.small, largeText && { fontSize: fs.small }]}>
                     {reminder.descricao}
                   </Text>
                 </View>
@@ -384,9 +392,7 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     gap: 16,
     borderWidth: 1,
-    borderColor: "#D8ECFF",
-    borderRadius: 8,
-    backgroundColor: "#EAF6FF",
+    borderRadius: 12,
     padding: 20,
     paddingBottom: 80,
     marginTop: 18,
@@ -398,7 +404,6 @@ const styles = StyleSheet.create({
   brandBadge: {
     alignSelf: "flex-start",
     borderRadius: 8,
-    backgroundColor: "#FFFFFF",
     color: "#2F80ED",
     fontWeight: "900",
     paddingHorizontal: 10,
@@ -406,14 +411,12 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   heroTitle: {
-    color: "#14324A",
     fontSize: 34,
     fontWeight: "900",
     lineHeight: 40,
   },
   heroSubtitle: {
     maxWidth: 520,
-    color: "#4E7393",
     fontSize: 16,
     lineHeight: 23,
   },
@@ -448,8 +451,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: "#2F80ED",
-    backgroundColor: "#FFFFFF",
     paddingHorizontal: 18,
     paddingVertical: 12,
   },
@@ -464,20 +465,16 @@ const styles = StyleSheet.create({
     minHeight: 150,
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#D8ECFF",
-    borderRadius: 8,
-    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
     gap: 8,
     padding: 18,
     marginTop: 10,
   },
   panelTitle: {
-    color: "#14324A",
     fontSize: 20,
     fontWeight: "900",
   },
   panelText: {
-    color: "#5F7F9B",
     fontWeight: "700",
   },
   stats: {
@@ -514,7 +511,6 @@ const styles = StyleSheet.create({
     width: 58,
     height: 48,
     borderRadius: 8,
-    backgroundColor: "#EAF6FF",
   },
   timeText: {
     color: "#2F80ED",
@@ -524,22 +520,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemTitle: {
-    color: "#14324A",
     fontWeight: "800",
   },
   checkButton: {
     borderRadius: 8,
-    backgroundColor: "#DDF8EA",
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   checkText: {
-    color: "#12805C",
     fontWeight: "900",
   },
   deleteButton: {
     borderRadius: 8,
-    backgroundColor: "#FFF5F5",
     padding: 10,
   },
   compactItem: {
@@ -555,12 +547,10 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: "#DDF8EA",
     alignItems: "center",
     justifyContent: "center",
   },
   statusDot: {
-    color: "#12805C",
     fontWeight: "900",
     fontSize: 14,
   },
@@ -568,7 +558,6 @@ const styles = StyleSheet.create({
     minWidth: 46,
     height: 36,
     borderRadius: 8,
-    backgroundColor: "#EAF6FF",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 6,

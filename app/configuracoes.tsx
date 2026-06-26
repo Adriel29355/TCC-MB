@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Switch,
@@ -19,7 +20,7 @@ import { useAppContext } from "@/contexts/AppContext";
 import {
   clearStoredUser,
   getStoredUser,
-  setStoredUser,
+  updateProfile,
 } from "@/lib/pharmalife";
 
 export default function ConfiguracoesScreen() {
@@ -28,16 +29,36 @@ export default function ConfiguracoesScreen() {
   const [senhaAtual, setSenhaAtual] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const { darkMode, largeText, toggleDarkMode, toggleLargeText } =
     useAppContext();
   const ps = usePharmaStyles();
 
   const optionTitleColor = darkMode ? "#C8E0F4" : "#14324A";
-  const messageColor = darkMode ? "#34D399" : "#12805C";
+  const successColor = darkMode ? "#34D399" : "#12805C";
+  const errorColor = darkMode ? "#F87171" : "#C2410C";
 
-  function handleSave() {
-    setStoredUser({ ...user, nome, senha: novaSenha || user.senha });
-    setMessage("Perfil atualizado.");
+  async function handleSave() {
+    setMessage("");
+    setError("");
+
+    if (!senhaAtual) {
+      setError("Informe a senha atual para salvar.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const msg = await updateProfile(nome, senhaAtual, novaSenha);
+      setMessage(msg || "Perfil atualizado com sucesso.");
+      setSenhaAtual("");
+      setNovaSenha("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao atualizar perfil.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleLogout() {
@@ -72,19 +93,32 @@ export default function ConfiguracoesScreen() {
         />
         <TextInput
           style={ps.input}
-          placeholder="Nova senha"
+          placeholder="Nova senha (opcional)"
           placeholderTextColor={darkMode ? "#3D6480" : "#9DBDD8"}
           secureTextEntry
           value={novaSenha}
           onChangeText={setNovaSenha}
         />
+
         {message ? (
-          <Text style={[styles.message, { color: messageColor }]}>
+          <Text style={[styles.feedback, { color: successColor }]}>
             {message}
           </Text>
         ) : null}
-        <Pressable style={ps.primaryButton} onPress={handleSave}>
-          <Text style={ps.primaryButtonText}>Atualizar perfil</Text>
+        {error ? (
+          <Text style={[styles.feedback, { color: errorColor }]}>{error}</Text>
+        ) : null}
+
+        <Pressable
+          style={ps.primaryButton}
+          onPress={handleSave}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={ps.primaryButtonText}>Atualizar perfil</Text>
+          )}
         </Pressable>
       </Card>
 
@@ -133,8 +167,9 @@ export default function ConfiguracoesScreen() {
 }
 
 const styles = StyleSheet.create({
-  message: {
-    fontWeight: "800",
+  feedback: {
+    fontWeight: "700",
+    fontSize: 14,
   },
   optionRow: {
     flexDirection: "row",

@@ -395,3 +395,24 @@ export function adherencePercent(
     ),
   );
 }
+export async function updateProfile(
+  nome: string,
+  senhaAtual: string,
+  novaSenha: string,
+): Promise<string> {
+  const user = getCurrentUser();
+  if (!user) throw new Error("Usuario nao autenticado.");
+
+  const res = await fetch(`${API_BASE_URL}/api/usuarios/${user.id}/profile`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nome, senhaAtual, novaSenha }),
+  });
+
+  const text = await res.text();
+  if (!res.ok) throw new Error(text || "Erro ao atualizar perfil.");
+
+  // Atualiza nome no storage local
+  setStoredUser({ ...user, nome });
+  return text;
+}
