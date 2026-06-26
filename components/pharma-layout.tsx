@@ -1,7 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Href, router, usePathname } from "expo-router";
 import { PropsWithChildren } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextStyle,
+  View,
+  ViewStyle,
+} from "react-native";
 
 import { useAppContext } from "@/contexts/AppContext";
 
@@ -20,18 +28,36 @@ const navItems: NavItem[] = [
   { href: "/ajuda", label: "Ajuda", icon: "help-circle-outline" },
 ];
 
+// Paleta dark refinada
+const dark = {
+  bg: "#0B1520",
+  cardBg: "#111E2D",
+  cardBorder: "#1E3448",
+  navBg: "#111E2D",
+  navBorder: "#1E3448",
+  title: "#E8F4FF",
+  subtitle: "#7FA8C8",
+  cardTitle: "#C8E0F4",
+  body: "#7FA8C8",
+  small: "#5F86A6",
+  eyebrowBg: "#0D2238",
+  pillBg: "#0D2238",
+  inputBg: "#0D2238",
+  inputBorder: "#1E3448",
+  inputText: "#C8E0F4",
+  secondaryBtn: "#0D2238",
+  secondaryBtnBorder: "#1E3448",
+};
+
 export function PharmaScreen({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const isAuthScreen = pathname === "/login" || pathname === "/cadastro";
-  const { darkMode, largeText } = useAppContext();
-
-  const bg = darkMode ? "#0F1923" : "#F8FCFF";
-  const cardBg = darkMode ? "#1A2736" : "#FFFFFF";
-  const borderColor = darkMode ? "#2A3F55" : "#D8ECFF";
-  const navBg = darkMode ? "#1A2736" : "#FFFFFF";
+  const { darkMode } = useAppContext();
 
   return (
-    <View style={[styles.root, { backgroundColor: bg }]}>
+    <View
+      style={[styles.root, { backgroundColor: darkMode ? dark.bg : "#F8FCFF" }]}
+    >
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -41,29 +67,42 @@ export function PharmaScreen({ children }: PropsWithChildren) {
         {children}
       </ScrollView>
       {!isAuthScreen ? (
-        <View style={[styles.nav, { backgroundColor: navBg, borderColor }]}>
+        <View
+          style={[
+            styles.nav,
+            darkMode && {
+              backgroundColor: dark.navBg,
+              borderColor: dark.navBorder,
+            },
+          ]}
+        >
           {navItems.map((item) => {
             const active = pathname === item.href;
             return (
               <Pressable
                 key={String(item.href)}
                 onPress={() => router.push(item.href)}
-                style={[styles.navItem, active && styles.navItemActive]}
+                style={[
+                  styles.navItem,
+                  active && [
+                    styles.navItemActive,
+                    darkMode && { backgroundColor: "#0D2238" },
+                  ],
+                ]}
               >
                 <View style={styles.navInner}>
                   <Ionicons
                     name={item.icon}
                     size={20}
                     color={
-                      active ? "#2F80ED" : darkMode ? "#8AAFC8" : "#6D8AA4"
+                      active ? "#2F80ED" : darkMode ? "#5F86A6" : "#6D8AA4"
                     }
                   />
                   <Text
                     style={[
                       styles.navText,
                       active && styles.navTextActive,
-                      darkMode && styles.navTextDark,
-                      largeText && styles.navTextLarge,
+                      darkMode && { color: "#5F86A6" },
                     ]}
                   >
                     {item.label}
@@ -91,14 +130,19 @@ export function SectionHeader({
   return (
     <View style={styles.header}>
       {eyebrow ? (
-        <Text style={[styles.eyebrow, darkMode && styles.eyebrowDark]}>
+        <Text
+          style={[
+            styles.eyebrow,
+            darkMode && { backgroundColor: dark.eyebrowBg, color: "#4A9EE0" },
+          ]}
+        >
           {eyebrow}
         </Text>
       ) : null}
       <Text
         style={[
           styles.title,
-          darkMode && styles.titleDark,
+          darkMode && { color: dark.title },
           largeText && styles.titleLarge,
         ]}
       >
@@ -108,7 +152,7 @@ export function SectionHeader({
         <Text
           style={[
             styles.subtitle,
-            darkMode && styles.subtitleDark,
+            darkMode && { color: dark.subtitle },
             largeText && styles.subtitleLarge,
           ]}
         >
@@ -122,7 +166,17 @@ export function SectionHeader({
 export function Card({ children }: PropsWithChildren) {
   const { darkMode } = useAppContext();
   return (
-    <View style={[styles.card, darkMode && styles.cardDark]}>{children}</View>
+    <View
+      style={[
+        styles.card,
+        darkMode && {
+          backgroundColor: dark.cardBg,
+          borderColor: dark.cardBorder,
+        },
+      ]}
+    >
+      {children}
+    </View>
   );
 }
 
@@ -135,14 +189,22 @@ export function StatCard({
 }) {
   const { darkMode, largeText } = useAppContext();
   return (
-    <View style={[styles.statCard, darkMode && styles.statCardDark]}>
+    <View
+      style={[
+        styles.statCard,
+        darkMode && {
+          backgroundColor: dark.cardBg,
+          borderColor: dark.cardBorder,
+        },
+      ]}
+    >
       <Text style={[styles.statValue, largeText && styles.statValueLarge]}>
         {value}
       </Text>
       <Text
         style={[
           styles.statLabel,
-          darkMode && styles.statLabelDark,
+          darkMode && { color: dark.body },
           largeText && styles.statLabelLarge,
         ]}
       >
@@ -152,6 +214,85 @@ export function StatCard({
   );
 }
 
+// Hook para estilos dinâmicos usados nas telas
+export function usePharmaStyles() {
+  const { darkMode, largeText } = useAppContext();
+
+  return {
+    cardTitle: {
+      color: darkMode ? dark.cardTitle : "#14324A",
+      fontSize: largeText ? 20 : 18,
+      fontWeight: "800",
+    } as TextStyle,
+    body: {
+      color: darkMode ? dark.body : "#5F7F9B",
+      fontSize: largeText ? 17 : 15,
+      lineHeight: 22,
+    } as TextStyle,
+    small: {
+      color: darkMode ? dark.small : "#6D8AA4",
+      fontSize: largeText ? 15 : 13,
+    } as TextStyle,
+    pill: {
+      alignSelf: "flex-start",
+      borderRadius: 8,
+      backgroundColor: darkMode ? dark.pillBg : "#EAF6FF",
+      color: "#2F80ED",
+      fontSize: 13,
+      fontWeight: "800",
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      overflow: "hidden",
+    } as TextStyle,
+    input: {
+      borderWidth: 1,
+      borderColor: darkMode ? dark.inputBorder : "#CFE7FF",
+      borderRadius: 8,
+      backgroundColor: darkMode ? dark.inputBg : "#FFFFFF",
+      color: darkMode ? dark.inputText : "#14324A",
+      fontSize: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    } as TextStyle,
+    primaryButton: {
+      alignItems: "center",
+      borderRadius: 8,
+      backgroundColor: "#2F80ED",
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+    } as ViewStyle,
+    primaryButtonText: {
+      color: "#FFFFFF",
+      fontSize: 15,
+      fontWeight: "800",
+    } as TextStyle,
+    secondaryButton: {
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: darkMode ? dark.secondaryBtnBorder : "#B8DEFF",
+      borderRadius: 8,
+      backgroundColor: darkMode ? dark.secondaryBtn : "#F8FCFF",
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+    } as ViewStyle,
+    secondaryButtonText: {
+      color: "#2F80ED",
+      fontSize: 15,
+      fontWeight: "800",
+    } as TextStyle,
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+    } as ViewStyle,
+    list: {
+      gap: 12,
+    } as ViewStyle,
+  };
+}
+
+// Mantém pharmaStyles estático para compatibilidade com telas que ainda não usam o hook
 export const pharmaStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
@@ -260,17 +401,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     overflow: "hidden",
   },
-  eyebrowDark: {
-    backgroundColor: "#1A3A5C",
-  },
   title: {
     color: "#14324A",
     fontSize: 32,
     fontWeight: "900",
     lineHeight: 38,
-  },
-  titleDark: {
-    color: "#E8F4FF",
   },
   titleLarge: {
     fontSize: 40,
@@ -281,9 +416,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 23,
   },
-  subtitleDark: {
-    color: "#8AAFC8",
-  },
   subtitleLarge: {
     fontSize: 20,
     lineHeight: 28,
@@ -291,27 +423,19 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     borderColor: "#D8ECFF",
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: "#FFFFFF",
     gap: 12,
     padding: 16,
-  },
-  cardDark: {
-    borderColor: "#2A3F55",
-    backgroundColor: "#1A2736",
   },
   statCard: {
     flex: 1,
     minWidth: 92,
     borderWidth: 1,
     borderColor: "#D8ECFF",
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: "#FFFFFF",
     padding: 14,
-  },
-  statCardDark: {
-    borderColor: "#2A3F55",
-    backgroundColor: "#1A2736",
   },
   statValue: {
     color: "#2F80ED",
@@ -325,9 +449,6 @@ const styles = StyleSheet.create({
     color: "#5F7F9B",
     fontSize: 12,
     fontWeight: "700",
-  },
-  statLabelDark: {
-    color: "#8AAFC8",
   },
   statLabelLarge: {
     fontSize: 15,
@@ -343,13 +464,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     borderWidth: 1,
     borderColor: "#D8ECFF",
-    borderRadius: 8,
+    borderRadius: 16,
     backgroundColor: "#FFFFFF",
     padding: 6,
   },
   navItem: {
     flex: 1,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingVertical: 8,
   },
   navItemActive: {
@@ -366,11 +487,5 @@ const styles = StyleSheet.create({
   },
   navTextActive: {
     color: "#2F80ED",
-  },
-  navTextDark: {
-    color: "#8AAFC8",
-  },
-  navTextLarge: {
-    fontSize: 13,
   },
 });

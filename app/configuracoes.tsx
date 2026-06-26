@@ -13,7 +13,7 @@ import {
   Card,
   PharmaScreen,
   SectionHeader,
-  pharmaStyles,
+  usePharmaStyles,
 } from "@/components/pharma-layout";
 import { useAppContext } from "@/contexts/AppContext";
 import {
@@ -30,6 +30,10 @@ export default function ConfiguracoesScreen() {
   const [message, setMessage] = useState("");
   const { darkMode, largeText, toggleDarkMode, toggleLargeText } =
     useAppContext();
+  const ps = usePharmaStyles();
+
+  const optionTitleColor = darkMode ? "#C8E0F4" : "#14324A";
+  const messageColor = darkMode ? "#34D399" : "#12805C";
 
   function handleSave() {
     setStoredUser({ ...user, nome, senha: novaSenha || user.senha });
@@ -50,42 +54,49 @@ export default function ConfiguracoesScreen() {
       />
 
       <Card>
-        <Text style={pharmaStyles.cardTitle}>Editar nome e senha</Text>
+        <Text style={ps.cardTitle}>Editar nome e senha</Text>
         <TextInput
-          style={pharmaStyles.input}
+          style={ps.input}
           placeholder="Nome"
+          placeholderTextColor={darkMode ? "#3D6480" : "#9DBDD8"}
           value={nome}
           onChangeText={setNome}
         />
         <TextInput
-          style={pharmaStyles.input}
+          style={ps.input}
           placeholder="Senha atual"
+          placeholderTextColor={darkMode ? "#3D6480" : "#9DBDD8"}
           secureTextEntry
           value={senhaAtual}
           onChangeText={setSenhaAtual}
         />
         <TextInput
-          style={pharmaStyles.input}
+          style={ps.input}
           placeholder="Nova senha"
+          placeholderTextColor={darkMode ? "#3D6480" : "#9DBDD8"}
           secureTextEntry
           value={novaSenha}
           onChangeText={setNovaSenha}
         />
-        {message ? <Text style={styles.message}>{message}</Text> : null}
-        <Pressable style={pharmaStyles.primaryButton} onPress={handleSave}>
-          <Text style={pharmaStyles.primaryButtonText}>Atualizar perfil</Text>
+        {message ? (
+          <Text style={[styles.message, { color: messageColor }]}>
+            {message}
+          </Text>
+        ) : null}
+        <Pressable style={ps.primaryButton} onPress={handleSave}>
+          <Text style={ps.primaryButtonText}>Atualizar perfil</Text>
         </Pressable>
       </Card>
 
       <Card>
-        <Text style={pharmaStyles.cardTitle}>Acessibilidade</Text>
+        <Text style={ps.cardTitle}>Acessibilidade</Text>
 
         <View style={styles.optionRow}>
-          <View>
-            <Text style={styles.optionTitle}>Modo escuro</Text>
-            <Text style={pharmaStyles.small}>
-              Fundo escuro para melhor leitura
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.optionTitle, { color: optionTitleColor }]}>
+              Modo escuro
             </Text>
+            <Text style={ps.small}>Fundo escuro para melhor leitura</Text>
           </View>
           <Switch
             value={darkMode}
@@ -96,9 +107,11 @@ export default function ConfiguracoesScreen() {
         </View>
 
         <View style={styles.optionRow}>
-          <View>
-            <Text style={styles.optionTitle}>Letras grandes</Text>
-            <Text style={pharmaStyles.small}>Aumenta o tamanho do texto</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.optionTitle, { color: optionTitleColor }]}>
+              Letras grandes
+            </Text>
+            <Text style={ps.small}>Aumenta o tamanho do texto</Text>
           </View>
           <Switch
             value={largeText}
@@ -110,7 +123,7 @@ export default function ConfiguracoesScreen() {
       </Card>
 
       <Card>
-        <Text style={pharmaStyles.cardTitle}>Conta</Text>
+        <Text style={ps.cardTitle}>Conta</Text>
         <Pressable onPress={handleLogout}>
           <Text style={styles.link}>Sair da conta</Text>
         </Pressable>
@@ -121,7 +134,6 @@ export default function ConfiguracoesScreen() {
 
 const styles = StyleSheet.create({
   message: {
-    color: "#12805C",
     fontWeight: "800",
   },
   optionRow: {
@@ -132,7 +144,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   optionTitle: {
-    color: "#14324A",
     fontWeight: "800",
     marginBottom: 2,
   },

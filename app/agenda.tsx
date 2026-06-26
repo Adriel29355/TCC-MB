@@ -1,17 +1,34 @@
 import { router } from "expo-router";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
   Card,
   PharmaScreen,
   SectionHeader,
-  pharmaStyles,
+  usePharmaStyles,
 } from "@/components/pharma-layout";
-import { getStoredMedications, getStoredReminders } from "@/lib/pharmalife";
+import { useAppContext } from "@/contexts/AppContext";
+import {
+  fetchMedications,
+  getStoredReminders,
+  Medication,
+} from "@/lib/pharmalife";
 
 export default function AgendaScreen() {
-  const medications = getStoredMedications();
+  const [medications, setMedications] = useState<Medication[]>([]);
   const reminders = getStoredReminders();
+  const ps = usePharmaStyles();
+  const { darkMode } = useAppContext();
+
+  useEffect(() => {
+    fetchMedications().then(setMedications);
+  }, []);
+
+  const timeBoxBg = darkMode ? "#0D2238" : "#EAF6FF";
+  const lineBg = darkMode ? "#1E3448" : "#D8ECFF";
+  const reminderBorder = darkMode ? "#1E3448" : "#EDF7FF";
+  const reminderTitle = darkMode ? "#C8E0F4" : "#14324A";
 
   return (
     <PharmaScreen>
@@ -22,8 +39,8 @@ export default function AgendaScreen() {
       />
 
       <Card>
-        <View style={pharmaStyles.row}>
-          <Text style={pharmaStyles.cardTitle}>Medicamentos de hoje</Text>
+        <View style={ps.row}>
+          <Text style={ps.cardTitle}>Medicamentos de hoje</Text>
           <Pressable onPress={() => router.push("/adicionar")}>
             <Text style={styles.link}>Novo</Text>
           </Pressable>
@@ -31,33 +48,42 @@ export default function AgendaScreen() {
 
         {medications.map((medication) => (
           <View key={medication.id} style={styles.timelineItem}>
-            <View style={styles.line} />
-            <View style={styles.timeBox}>
+            <View style={[styles.line, { backgroundColor: lineBg }]} />
+            <View style={[styles.timeBox, { backgroundColor: timeBoxBg }]}>
               <Text style={styles.timeText}>
                 {medication.agenda?.horario ?? "--:--"}
               </Text>
             </View>
             <View style={styles.info}>
-              <Text style={pharmaStyles.cardTitle}>{medication.nome}</Text>
-              <Text style={pharmaStyles.body}>
+              <Text style={ps.cardTitle}>{medication.nome}</Text>
+              <Text style={ps.body}>
                 {medication.descricao} • {medication.tipo}
               </Text>
               {medication.complemento ? (
-                <Text style={pharmaStyles.small}>{medication.complemento}</Text>
+                <Text style={ps.small}>{medication.complemento}</Text>
               ) : null}
             </View>
           </View>
         ))}
+
+        {medications.length === 0 && (
+          <Text style={ps.body}>Nenhum medicamento cadastrado.</Text>
+        )}
       </Card>
 
       <Card>
-        <Text style={pharmaStyles.cardTitle}>Lembretes importantes</Text>
+        <Text style={ps.cardTitle}>Lembretes importantes</Text>
         {reminders.map((reminder) => (
-          <View key={reminder.id} style={styles.reminder}>
+          <View
+            key={reminder.id}
+            style={[styles.reminder, { borderTopColor: reminderBorder }]}
+          >
             <Text style={styles.timeText}>{reminder.horario}</Text>
             <View style={styles.info}>
-              <Text style={styles.reminderTitle}>{reminder.titulo}</Text>
-              <Text style={pharmaStyles.small}>
+              <Text style={[styles.reminderTitle, { color: reminderTitle }]}>
+                {reminder.titulo}
+              </Text>
+              <Text style={ps.small}>
                 {reminder.data} • {reminder.descricao}
               </Text>
             </View>

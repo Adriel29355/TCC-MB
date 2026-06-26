@@ -113,31 +113,22 @@ export const sampleReminders: Reminder[] = [
 
 const storage = {
   get(key: string) {
-    if (typeof window === "undefined" || !window.localStorage) {
-      return null;
-    }
-
+    if (typeof window === "undefined" || !window.localStorage) return null;
     return window.localStorage.getItem(key);
   },
   set(key: string, value: string) {
-    if (typeof window !== "undefined" && window.localStorage) {
+    if (typeof window !== "undefined" && window.localStorage)
       window.localStorage.setItem(key, value);
-    }
   },
   remove(key: string) {
-    if (typeof window !== "undefined" && window.localStorage) {
+    if (typeof window !== "undefined" && window.localStorage)
       window.localStorage.removeItem(key);
-    }
   },
 };
 
 async function parseApiError(response: Response, fallback: string) {
   const text = await response.text();
-
-  if (!text) {
-    return fallback;
-  }
-
+  if (!text) return fallback;
   try {
     const json = JSON.parse(text) as { erro?: string; message?: string };
     return json.erro || json.message || text;
@@ -167,15 +158,6 @@ export function setStoredUser(user: User) {
 export function clearStoredUser() {
   sessionUser = null;
   storage.remove("pharmalife:user");
-}
-
-export function getStoredMedications(): Medication[] {
-  const raw = storage.get("pharmalife:medications");
-  return raw ? JSON.parse(raw) : sampleMedications;
-}
-
-export function setStoredMedications(medications: Medication[]) {
-  storage.set("pharmalife:medications", JSON.stringify(medications));
 }
 
 export function getStoredHistory(): HistoryItem[] {
@@ -235,39 +217,164 @@ export async function registerUser(user: Omit<User, "id">) {
   return (await response.json()) as User;
 }
 
-export function addMedication(
+export async function fetchMedications(): Promise<Medication[]> {
+  const user = getCurrentUser();
+  if (!user) return [];
+
+  const agendaRes = await fetch(
+    `${API_BASE_URL}/api/usuarios/${user.id}/agenda`,
+  );
+  if (!agendaRes.ok) return [];
+
+  const agendas = await agendaRes.json();
+  if (!agendas || agendas.length === 0) return [];
+
+  const agendaId = agendas[0].id;
+
+  const medRes = await fetch(
+    `${API_BASE_URL}/api/agenda/${agendaId}/medicamentos`,
+  );
+  if (!medRes.ok) return [];
+
+  return (await medRes.json()) as Medication[];
+}
+
+export async function addMedication(
   input: Omit<Medication, "id" | "statusMedicamento" | "agenda"> & {
     horario: string;
   },
 ) {
-  const medications = getStoredMedications();
-  const newMedication: Medication = {
-    id: Date.now(),
-    nome: input.nome,
-    descricao: input.descricao,
-    tipo: input.tipo,
-    complemento: input.complemento,
-    statusMedicamento: "proximo",
-    agenda: { id: 1, nome: "Agenda Principal", horario: input.horario },
-  };
+  const user = getCurrentUser();
+  if (!user) throw new Error("Usuario nao autenticado.");
 
-  setStoredMedications([newMedication, ...medications]);
-  return newMedication;
+  const agendaRes = await fetch(
+    `${API_BASE_URL}/api/usuarios/${user.id}/agenda`,
+  );
+
+  if (!agendaRes.ok) {
+    throw new Error(await parseApiError(agendaRes, "Erro ao buscar agenda."));
+  }
+
+  const agendas = await agendaRes.json();
+
+  let agendaId: number;
+
+  if (!agendas || agendas.length === 0) {
+    // Cria agenda automaticamente se não existir
+    const createRes = await fetch(
+      `${API_BASE_URL}/api/usuarios/${user.id}/agenda`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: "Agenda Principal",
+          dosagem: "-",
+          observacoes: "",
+          horario: "08:00",
+          dataInicio: new Date().toISOString().slice(0, 16),
+          dataFim: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .slice(0, 16),
+        }),
+      },
+    );
+    if (!createRes.ok) {
+      throw new Error(
+        await parseApiError(createRes, "Erro ao criar agenda automaticamente."),
+      );
+    }
+
+    const novaAgenda = await createRes.json();
+    agendaId = novaAgenda.id;
+  } else {
+    agendaId = agendas[0].id;
+  }
+
+  const medRes = await fetch(
+    `${API_BASE_URL}/api/agenda/${agendaId}/medicamentos`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nome: input.nome,
+        descricao: input.descricao,
+        tipo: input.tipo,
+        complemento: input.complemento ?? "",
+        statusMedicamento: "proximo",
+      }),
+    },
+  );
+
+  if (!medRes.ok) {
+    throw new Error(await parseApiError(medRes, "Erro ao salvar medicamento."));
+  }
+
+  return (await medRes.json()) as Medication;
 }
 
-export function markMedicationAsTaken(medication: Medication) {
-  const history = getStoredHistory();
+export async function deleteMedication(id: number): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/medicamentos/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    throw new Error(await parseApiError(res, "Erro ao deletar medicamento."));
+  }
+}
+
+export async function markMedicationAsTaken(medication: Medication) {
+  const horario =
+    medication.agenda?.horario ?? new Date().toTimeString().slice(0, 5);
+
+  // 1. Registra no histórico como PENDENTE
+  const registrarRes = await fetch(
+    `${API_BASE_URL}/api/agenda/${medication.agenda?.id}/medicamentos/${medication.id}/historico`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nome: medication.nome,
+        dosagem: medication.descricao,
+        observacoes: medication.complemento ?? "",
+        horario,
+      }),
+    },
+  );
+
+  if (!registrarRes.ok) {
+    throw new Error(
+      await parseApiError(registrarRes, "Erro ao registrar historico."),
+    );
+  }
+
+  const historico = await registrarRes.json();
+
+  // 2. Confirma o uso imediatamente
+  const confirmarRes = await fetch(
+    `${API_BASE_URL}/api/historico/${historico.id}/confirmar`,
+    { method: "PATCH" },
+  );
+
+  if (!confirmarRes.ok) {
+    throw new Error(
+      await parseApiError(confirmarRes, "Erro ao confirmar medicamento."),
+    );
+  }
+
+  const confirmado = await confirmarRes.json();
+
+  // Salva também no localStorage como fallback local
   const entry: HistoryItem = {
-    id: Date.now(),
-    nome: medication.nome,
-    dosagem: medication.descricao,
-    observacoes: medication.complemento,
-    horario:
-      medication.agenda?.horario ?? new Date().toTimeString().slice(0, 5),
+    id: confirmado.id,
+    nome: confirmado.nome ?? medication.nome,
+    dosagem: confirmado.dosagem ?? medication.descricao,
+    observacoes: confirmado.observacoes ?? medication.complemento,
+    horario: confirmado.horario ?? horario,
     status: "CONFIRMADO",
     dataConfirmacao: new Date().toISOString(),
   };
 
+  const history = getStoredHistory();
   setStoredHistory([entry, ...history]);
   return entry;
 }
@@ -277,9 +384,7 @@ export function adherencePercent(
   history: HistoryItem[],
 ) {
   const expected = medications.length * 7;
-  if (expected === 0) {
-    return 0;
-  }
+  if (expected === 0) return 0;
 
   return Math.min(
     100,
@@ -289,9 +394,4 @@ export function adherencePercent(
         100,
     ),
   );
-}
-export function deleteMedication(id: number): Medication[] {
-  const medications = getStoredMedications().filter((m) => m.id !== id);
-  setStoredMedications(medications);
-  return medications;
 }

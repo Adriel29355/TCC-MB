@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Redirect, router } from "expo-router";
-import { useMemo, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
   Card,
@@ -10,11 +10,12 @@ import {
   StatCard,
 } from "@/components/pharma-layout";
 import { useAppContext } from "@/contexts/AppContext";
+import { confirmDialog } from "@/lib/confirm-dialog";
 import {
   adherencePercent,
   deleteMedication,
+  fetchMedications,
   getStoredHistory,
-  getStoredMedications,
   getStoredReminders,
   getStoredUser,
   isUserAuthenticated,
@@ -23,7 +24,7 @@ import {
 } from "@/lib/pharmalife";
 
 export default function HomeScreen() {
-  const [medications, setMedications] = useState(() => getStoredMedications());
+  const [medications, setMedications] = useState<Medication[]>([]);
   const [history, setHistory] = useState(() => getStoredHistory());
   const reminders = useMemo(() => getStoredReminders(), []);
   const user = getStoredUser();
@@ -33,6 +34,10 @@ export default function HomeScreen() {
   const pending = Math.max(0, medications.length - confirmed);
   const adherence = adherencePercent(medications, history);
   const { darkMode, largeText } = useAppContext();
+
+  useEffect(() => {
+    fetchMedications().then(setMedications);
+  }, []);
 
   const colors = {
     heroBg: darkMode ? "#1A2736" : "#EAF6FF",
@@ -51,24 +56,39 @@ export default function HomeScreen() {
     secondaryBorder: darkMode ? "#2F80ED" : "#2F80ED",
   };
 
-  function handleTaken(medication: Medication) {
-    const entry = markMedicationAsTaken(medication);
-    setHistory([entry, ...history]);
-    setMedications([...medications]);
+  async function handleTaken(medication: Medication) {
+    try {
+      const entry = await markMedicationAsTaken(medication);
+      setHistory([entry, ...history]);
+      setMedications([...medications]);
+    } catch (error) {
+      confirmDialog(
+        "Erro",
+        error instanceof Error ? error.message : "Nao foi possivel confirmar.",
+        () => {},
+      );
+    }
   }
 
   function handleDelete(medication: Medication) {
-    Alert.alert("Excluir medicamento", `Deseja excluir "${medication.nome}"?`, [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Excluir",
-        style: "destructive",
-        onPress: () => {
-          const updated = deleteMedication(medication.id);
-          setMedications(updated);
-        },
+    confirmDialog(
+      "Excluir medicamento",
+      `Deseja excluir "${medication.nome}"?`,
+      async () => {
+        try {
+          await deleteMedication(medication.id);
+          setMedications((prev) => prev.filter((m) => m.id !== medication.id));
+        } catch (error) {
+          confirmDialog(
+            "Erro",
+            error instanceof Error
+              ? error.message
+              : "Nao foi possivel excluir.",
+            () => {},
+          );
+        }
       },
-    ]);
+    );
   }
 
   if (!isUserAuthenticated()) {
@@ -240,6 +260,12 @@ export default function HomeScreen() {
               </Pressable>
             </View>
           ))}
+
+          {medications.length === 0 && (
+            <Text style={pharmaStyles.body}>
+              Nenhum medicamento cadastrado.
+            </Text>
+          )}
         </View>
       </Card>
 
@@ -443,7 +469,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     gap: 8,
     padding: 18,
-    marginTop: 10, // ← era 60, diminui pra 30
+    marginTop: 10,
   },
   panelTitle: {
     color: "#14324A",

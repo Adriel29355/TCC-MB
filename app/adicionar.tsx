@@ -1,6 +1,11 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, Text, TextInput } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  Text,
+  TextInput
+} from "react-native";
 
 import {
   Card,
@@ -16,16 +21,26 @@ export default function AdicionarScreen() {
   const [horario, setHorario] = useState("");
   const [frequencia, setFrequencia] = useState("Diario");
   const [observacao, setObservacao] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  function handleSave() {
-    addMedication({
-      nome: nome || "Novo medicamento",
-      descricao: dosagem || "1 comprimido",
-      horario: horario || "08:00",
-      tipo: frequencia || "Diario",
-      complemento: observacao || "Sem observacao",
-    });
-    router.replace("/agenda");
+  async function handleSave() {
+    setError("");
+    setLoading(true);
+    try {
+      await addMedication({
+        nome: nome || "Novo medicamento",
+        descricao: dosagem || "1 comprimido",
+        horario: horario || "08:00",
+        tipo: frequencia || "Diario",
+        complemento: observacao || "Sem observacao",
+      });
+      router.replace("/agenda");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao salvar medicamento.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -69,8 +84,22 @@ export default function AdicionarScreen() {
           multiline
         />
 
-        <Pressable style={pharmaStyles.primaryButton} onPress={handleSave}>
-          <Text style={pharmaStyles.primaryButtonText}>Salvar medicamento</Text>
+        {error ? (
+          <Text style={{ color: "#C2410C", fontWeight: "700" }}>{error}</Text>
+        ) : null}
+
+        <Pressable
+          style={pharmaStyles.primaryButton}
+          onPress={handleSave}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={pharmaStyles.primaryButtonText}>
+              Salvar medicamento
+            </Text>
+          )}
         </Pressable>
       </Card>
     </PharmaScreen>
