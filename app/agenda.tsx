@@ -16,6 +16,7 @@ import {
 } from "@/lib/pharmalife";
 
 export default function AgendaScreen() {
+<<<<<<< HEAD
   const [medications, setMedications] = useState<Medication[]>([]);
   const reminders = getStoredReminders();
   const ps = usePharmaStyles();
@@ -29,6 +30,23 @@ export default function AgendaScreen() {
   const lineBg = darkMode ? "#1E3448" : "#D8ECFF";
   const reminderBorder = darkMode ? "#1E3448" : "#EDF7FF";
   const reminderTitle = darkMode ? "#C8E0F4" : "#14324A";
+=======
+const [medications, setMedications] = useState<any[]>([]);
+const reminders = getStoredReminders();
+
+useEffect(() => {
+  loadMedications();
+}, []);
+
+async function loadMedications() {
+  try {
+    const meds = await getStoredMedications();
+    setMedications(meds);
+  } catch (error) {
+    console.error("Erro ao carregar medicamentos:", error);
+  }
+}
+>>>>>>> 1b729ffb9fb37415fe9da23c44b02689415d86ed
 
   return (
     <PharmaScreen>

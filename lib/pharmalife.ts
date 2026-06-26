@@ -40,6 +40,13 @@ export type Reminder = {
   data: string;
   horario: string;
 };
+type Agenda = {
+  id: number;
+  nome: string;
+  dosagem: string;
+  horario: string;
+  observacoes: string;
+};
 
 const sampleUser: User = {
   id: 1,
@@ -81,26 +88,6 @@ export const sampleMedications: Medication[] = [
   },
 ];
 
-export const sampleHistory: HistoryItem[] = [
-  {
-    id: 1,
-    nome: "Losartana",
-    dosagem: "50mg",
-    observacoes: "Confirmado pelo paciente",
-    horario: "08:00",
-    status: "CONFIRMADO",
-    dataConfirmacao: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    nome: "Metformina",
-    dosagem: "850mg",
-    observacoes: "Aguardando confirmacao",
-    horario: "12:00",
-    status: "PENDENTE",
-  },
-];
-
 export const sampleReminders: Reminder[] = [
   {
     id: 1,
@@ -136,16 +123,43 @@ async function parseApiError(response: Response, fallback: string) {
     return text;
   }
 }
+async function getUserAgenda(): Promise<Agenda> {
+  const user = getCurrentUser();
 
+  if (!user) {
+    throw new Error("Usuário não autenticado.");
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/usuarios/${user.id}/agenda`
+  );
+
+  if (!response.ok) {
+    throw new Error("Não foi possível localizar a agenda.");
+  }
+
+  const agendas = (await response.json()) as Agenda[];
+
+  if (agendas.length === 0) {
+    throw new Error("Usuário não possui agenda.");
+  }
+
+  return agendas[0];
+}
 export function getCurrentUser(): User | null {
   const rawUser = storage.get("pharmalife:user");
   return rawUser ? JSON.parse(rawUser) : sessionUser;
 }
 
 export function getStoredUser(): User {
-  return getCurrentUser() ?? sampleUser;
-}
+  const user = getCurrentUser();
 
+  if (!user) {
+    throw new Error("Usuário não autenticado.");
+  }
+
+  return user;
+}
 export function isUserAuthenticated() {
   return Boolean(getCurrentUser());
 }
@@ -160,13 +174,44 @@ export function clearStoredUser() {
   storage.remove("pharmalife:user");
 }
 
+<<<<<<< HEAD
 export function getStoredHistory(): HistoryItem[] {
   const raw = storage.get("pharmalife:history");
   return raw ? JSON.parse(raw) : sampleHistory;
 }
+=======
+export async function getStoredMedications() {
 
-export function setStoredHistory(history: HistoryItem[]) {
-  storage.set("pharmalife:history", JSON.stringify(history));
+  const agenda = await getUserAgenda();
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/agenda/${agenda.id}/medicamentos`
+  );
+
+  if (!response.ok) {
+    throw new Error("Erro ao carregar medicamentos.");
+  }
+
+  return (await response.json()) as Medication[];
+}
+export function setStoredMedications(medications: Medication[]) {
+  storage.set("pharmalife:medications", JSON.stringify(medications));
+}
+export async function getStoredHistory(): Promise<HistoryItem[]> {
+  const user = getStoredUser();
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/usuarios/${user.id}/historico`
+  );
+>>>>>>> 1b729ffb9fb37415fe9da23c44b02689415d86ed
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(response, "Erro ao carregar histórico.")
+    );
+  }
+
+  return (await response.json()) as HistoryItem[];
 }
 
 export function getStoredReminders(): Reminder[] {
@@ -217,6 +262,7 @@ export async function registerUser(user: Omit<User, "id">) {
   return (await response.json()) as User;
 }
 
+<<<<<<< HEAD
 export async function fetchMedications(): Promise<Medication[]> {
   const user = getCurrentUser();
   if (!user) return [];
@@ -295,10 +341,32 @@ export async function addMedication(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+=======
+export async function addMedication(
+  input: {
+    nome: string;
+    descricao: string;
+    tipo: string;
+    complemento?: string;
+    horario: string;
+  },
+) {
+
+  const agenda = await getUserAgenda();
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/agenda/${agenda.id}/medicamentos`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+>>>>>>> 1b729ffb9fb37415fe9da23c44b02689415d86ed
       body: JSON.stringify({
         nome: input.nome,
         descricao: input.descricao,
         tipo: input.tipo,
+<<<<<<< HEAD
         complemento: input.complemento ?? "",
         statusMedicamento: "proximo",
       }),
@@ -310,8 +378,29 @@ export async function addMedication(
   }
 
   return (await medRes.json()) as Medication;
-}
+=======
+        complemento: input.complemento,
+      }),
+    }
+  );
 
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        "Não foi possível cadastrar medicamento."
+      )
+    );
+  }
+
+  return await response.json();
+>>>>>>> 1b729ffb9fb37415fe9da23c44b02689415d86ed
+}
+export async function markMedicationAsTaken(
+  medication: Medication
+): Promise<HistoryItem> {
+
+<<<<<<< HEAD
 export async function deleteMedication(id: number): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/api/medicamentos/${id}`, {
     method: "DELETE",
@@ -377,6 +466,58 @@ export async function markMedicationAsTaken(medication: Medication) {
   const history = getStoredHistory();
   setStoredHistory([entry, ...history]);
   return entry;
+=======
+  const agenda = await getUserAgenda();
+
+  // 1 - registra no histórico
+
+  const registrar = await fetch(
+    `${API_BASE_URL}/api/agenda/${agenda.id}/medicamentos/${medication.id}/historico`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        nome: medication.nome,
+        dosagem: medication.descricao,
+        observacoes: medication.complemento ?? "",
+        horario: medication.agenda?.horario ?? "08:00",
+      }),
+    }
+  );
+
+  if (!registrar.ok) {
+    throw new Error(
+      await parseApiError(
+        registrar,
+        "Erro ao registrar histórico."
+      )
+    );
+  }
+
+  const historico = (await registrar.json()) as HistoryItem;
+
+  // 2 - confirma o uso
+
+  const confirmar = await fetch(
+    `${API_BASE_URL}/api/historico/${historico.id}/confirmar`,
+    {
+      method: "PATCH",
+    }
+  );
+
+  if (!confirmar.ok) {
+    throw new Error(
+      await parseApiError(
+        confirmar,
+        "Erro ao confirmar medicamento."
+      )
+    );
+  }
+
+  return (await confirmar.json()) as HistoryItem;
+>>>>>>> 1b729ffb9fb37415fe9da23c44b02689415d86ed
 }
 
 export function adherencePercent(
@@ -395,6 +536,7 @@ export function adherencePercent(
     ),
   );
 }
+<<<<<<< HEAD
 export async function updateProfile(
   nome: string,
   senhaAtual: string,
@@ -416,3 +558,20 @@ export async function updateProfile(
   setStoredUser({ ...user, nome });
   return text;
 }
+=======
+export async function deleteMedication(id: number) {
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/medicamentos/${id}`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Não foi possível excluir o medicamento.");
+  }
+
+  return true;
+}
+>>>>>>> 1b729ffb9fb37415fe9da23c44b02689415d86ed

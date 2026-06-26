@@ -24,6 +24,7 @@ export default function AdicionarScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+<<<<<<< HEAD
   async function handleSave() {
     setError("");
     setLoading(true);
@@ -41,7 +42,30 @@ export default function AdicionarScreen() {
     } finally {
       setLoading(false);
     }
+=======
+  const [loading, setLoading] = useState(false);
+const [message, setMessage] = useState("");
+
+async function handleSave() {
+  setLoading(true);
+  try {
+    await addMedication({
+      nome: nome || "Novo medicamento",
+      descricao: dosagem || "1 comprimido",
+      horario: horario || "08:00",
+      tipo: frequencia || "Diario",
+      complemento: observacao || "Sem observacao",
+    });
+    router.replace("/agenda");
+  } catch (error) {
+    setMessage(
+      error instanceof Error ? error.message : "Nao foi possivel salvar."
+    );
+  } finally {
+    setLoading(false);
+>>>>>>> 1b729ffb9fb37415fe9da23c44b02689415d86ed
   }
+}
 
   return (
     <PharmaScreen>
@@ -84,6 +108,7 @@ export default function AdicionarScreen() {
           multiline
         />
 
+<<<<<<< HEAD
         {error ? (
           <Text style={{ color: "#C2410C", fontWeight: "700" }}>{error}</Text>
         ) : null}
@@ -101,6 +126,15 @@ export default function AdicionarScreen() {
             </Text>
           )}
         </Pressable>
+=======
+        {message ? <Text style={{ color: "#C2410C", fontWeight: "700" }}>{message}</Text> : null}
+
+<Pressable style={pharmaStyles.primaryButton} onPress={handleSave} disabled={loading}>
+  <Text style={pharmaStyles.primaryButtonText}>
+    {loading ? "Salvando..." : "Salvar medicamento"}
+  </Text>
+</Pressable>
+>>>>>>> 1b729ffb9fb37415fe9da23c44b02689415d86ed
       </Card>
     </PharmaScreen>
   );
