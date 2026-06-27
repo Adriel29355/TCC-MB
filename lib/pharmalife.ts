@@ -309,7 +309,19 @@ export async function addMedication(
     throw new Error(await parseApiError(medRes, "Erro ao salvar medicamento."));
   }
 
-  return (await medRes.json()) as Medication;
+  const medication = (await medRes.json()) as Medication;
+
+  // Agenda notificação no horário cadastrado (só mobile)
+  import("./notifications")
+    .then(({ scheduleMedicationNotification }) => {
+      scheduleMedicationNotification({
+        ...medication,
+        agenda: { ...medication.agenda, id: agendaId, horario: input.horario },
+      }).catch(() => {});
+    })
+    .catch(() => {});
+
+  return medication;
 }
 
 export async function deleteMedication(id: number): Promise<void> {
@@ -320,6 +332,13 @@ export async function deleteMedication(id: number): Promise<void> {
   if (!res.ok) {
     throw new Error(await parseApiError(res, "Erro ao deletar medicamento."));
   }
+
+  // Cancela notificação associada (só mobile)
+  import("./notifications")
+    .then(({ cancelMedicationNotification }) => {
+      cancelMedicationNotification(id).catch(() => {});
+    })
+    .catch(() => {});
 }
 
 export async function markMedicationAsTaken(medication: Medication) {
