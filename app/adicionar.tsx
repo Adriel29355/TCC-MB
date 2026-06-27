@@ -1,18 +1,14 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  TextInput
-} from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput } from "react-native";
 
 import {
   Card,
   PharmaScreen,
   SectionHeader,
-  pharmaStyles,
+  usePharmaStyles,
 } from "@/components/pharma-layout";
+import { useAppContext } from "@/contexts/AppContext";
 import { addMedication } from "@/lib/pharmalife";
 
 export default function AdicionarScreen() {
@@ -23,8 +19,9 @@ export default function AdicionarScreen() {
   const [observacao, setObservacao] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const ps = usePharmaStyles();
+  const { darkMode } = useAppContext();
 
-<<<<<<< HEAD
   async function handleSave() {
     setError("");
     setLoading(true);
@@ -42,30 +39,7 @@ export default function AdicionarScreen() {
     } finally {
       setLoading(false);
     }
-=======
-  const [loading, setLoading] = useState(false);
-const [message, setMessage] = useState("");
-
-async function handleSave() {
-  setLoading(true);
-  try {
-    await addMedication({
-      nome: nome || "Novo medicamento",
-      descricao: dosagem || "1 comprimido",
-      horario: horario || "08:00",
-      tipo: frequencia || "Diario",
-      complemento: observacao || "Sem observacao",
-    });
-    router.replace("/agenda");
-  } catch (error) {
-    setMessage(
-      error instanceof Error ? error.message : "Nao foi possivel salvar."
-    );
-  } finally {
-    setLoading(false);
->>>>>>> 1b729ffb9fb37415fe9da23c44b02689415d86ed
   }
-}
 
   return (
     <PharmaScreen>
@@ -77,64 +51,64 @@ async function handleSave() {
 
       <Card>
         <TextInput
-          style={pharmaStyles.input}
+          style={ps.input}
           placeholder="Nome do remedio"
+          placeholderTextColor={darkMode ? "#3D6480" : "#9DBDD8"}
           value={nome}
           onChangeText={setNome}
         />
         <TextInput
-          style={pharmaStyles.input}
+          style={ps.input}
           placeholder="Dosagem (ex: 500mg)"
+          placeholderTextColor={darkMode ? "#3D6480" : "#9DBDD8"}
           value={dosagem}
           onChangeText={setDosagem}
         />
         <TextInput
-          style={pharmaStyles.input}
+          style={ps.input}
           placeholder="Horario (ex: 08:00)"
+          placeholderTextColor={darkMode ? "#3D6480" : "#9DBDD8"}
           value={horario}
           onChangeText={setHorario}
         />
         <TextInput
-          style={pharmaStyles.input}
+          style={ps.input}
           placeholder="Frequencia (Diario, 12h, 8h, Semanal)"
+          placeholderTextColor={darkMode ? "#3D6480" : "#9DBDD8"}
           value={frequencia}
           onChangeText={setFrequencia}
         />
         <TextInput
-          style={pharmaStyles.input}
+          style={ps.input}
           placeholder="Observacao"
+          placeholderTextColor={darkMode ? "#3D6480" : "#9DBDD8"}
           value={observacao}
           onChangeText={setObservacao}
           multiline
         />
 
-<<<<<<< HEAD
         {error ? (
-          <Text style={{ color: "#C2410C", fontWeight: "700" }}>{error}</Text>
+          <Text
+            style={{
+              color: darkMode ? "#F87171" : "#C2410C",
+              fontWeight: "700",
+            }}
+          >
+            {error}
+          </Text>
         ) : null}
 
         <Pressable
-          style={pharmaStyles.primaryButton}
+          style={ps.primaryButton}
           onPress={handleSave}
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={pharmaStyles.primaryButtonText}>
-              Salvar medicamento
-            </Text>
+            <Text style={ps.primaryButtonText}>Salvar medicamento</Text>
           )}
         </Pressable>
-=======
-        {message ? <Text style={{ color: "#C2410C", fontWeight: "700" }}>{message}</Text> : null}
-
-<Pressable style={pharmaStyles.primaryButton} onPress={handleSave} disabled={loading}>
-  <Text style={pharmaStyles.primaryButtonText}>
-    {loading ? "Salvando..." : "Salvar medicamento"}
-  </Text>
-</Pressable>
->>>>>>> 1b729ffb9fb37415fe9da23c44b02689415d86ed
       </Card>
     </PharmaScreen>
   );
