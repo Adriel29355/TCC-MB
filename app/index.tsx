@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Redirect, router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
@@ -13,26 +13,39 @@ import { useAppContext } from "@/contexts/AppContext";
 import {
   adherencePercent,
   deleteMedication,
+  getCurrentUser,
   getStoredHistory,
   getStoredMedications,
   getStoredReminders,
-  getStoredUser,
+  HistoryItem,
   isUserAuthenticated,
   markMedicationAsTaken,
   Medication,
 } from "@/lib/pharmalife";
 
 export default function HomeScreen() {
-  const [medications, setMedications] = useState(() => getStoredMedications());
-  const [history, setHistory] = useState(() => getStoredHistory());
+  const [medications, setMedications] = useState<Medication[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const reminders = useMemo(() => getStoredReminders(), []);
-  const user = getStoredUser();
-  const confirmed = history.filter(
-    (item) => item.status === "CONFIRMADO",
-  ).length;
+  const { darkMode, largeText } = useAppContext();
+
+  const user = getCurrentUser();
+
+  useEffect(() => {
+    if (!user) return;
+    Promise.all([getStoredMedications(), getStoredHistory()])
+      .then(([meds, hist]) => {
+        setMedications(meds);
+        setHistory(hist);
+      })
+      .catch((err: Error) => Alert.alert("Erro ao carregar dados", err.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const confirmed = history.filter((item) => item.status === "CONFIRMADO").length;
   const pending = Math.max(0, medications.length - confirmed);
   const adherence = adherencePercent(medications, history);
-  const { darkMode, largeText } = useAppContext();
 
   const colors = {
     heroBg: darkMode ? "#1A2736" : "#EAF6FF",
@@ -51,10 +64,13 @@ export default function HomeScreen() {
     secondaryBorder: darkMode ? "#2F80ED" : "#2F80ED",
   };
 
-  function handleTaken(medication: Medication) {
-    const entry = markMedicationAsTaken(medication);
-    setHistory([entry, ...history]);
-    setMedications([...medications]);
+  async function handleTaken(medication: Medication) {
+    try {
+      const entry = await markMedicationAsTaken(medication);
+      setHistory((prev) => [entry, ...prev]);
+    } catch (err: any) {
+      Alert.alert("Erro", err.message);
+    }
   }
 
   function handleDelete(medication: Medication) {
@@ -63,9 +79,13 @@ export default function HomeScreen() {
       {
         text: "Excluir",
         style: "destructive",
-        onPress: () => {
-          const updated = deleteMedication(medication.id);
-          setMedications(updated);
+        onPress: async () => {
+          try {
+            await deleteMedication(medication.id);
+            setMedications((prev) => prev.filter((m) => m.id !== medication.id));
+          } catch (err: any) {
+            Alert.alert("Erro", err.message);
+          }
         },
       },
     ]);
@@ -73,6 +93,18 @@ export default function HomeScreen() {
 
   if (!isUserAuthenticated()) {
     return <Redirect href="/login" />;
+  }
+
+  if (loading) {
+    return (
+      <PharmaScreen>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", marginTop: 80 }}>
+          <Text style={{ color: darkMode ? "#E8F4FF" : "#14324A", fontSize: 16 }}>
+            Carregando...
+          </Text>
+        </View>
+      </PharmaScreen>
+    );
   }
 
   const fs = largeText
@@ -160,7 +192,7 @@ export default function HomeScreen() {
             { color: colors.panelTitle, fontSize: largeText ? 24 : 20 },
           ]}
         >
-          Olá, {user.nome}
+          Olá, {user?.nome}
         </Text>
         <Text
           style={[
@@ -443,7 +475,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     gap: 8,
     padding: 18,
-    marginTop: 10, // ← era 60, diminui pra 30
+    marginTop: 10,
   },
   panelTitle: {
     color: "#14324A",
