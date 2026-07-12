@@ -2,7 +2,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { Card, PharmaScreen, SectionHeader, pharmaStyles } from '@/components/pharma-layout';
+import { Card, PharmaScreen, SectionHeader, usePharmaStyles } from '@/components/pharma-layout';
+import { useAppContext } from '@/contexts/AppContext';
 import { registerUser } from '@/lib/pharmalife';
 
 export default function CadastroScreen() {
@@ -15,6 +16,9 @@ export default function CadastroScreen() {
   const [message, setMessage] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const ps = usePharmaStyles();
+  const { darkMode } = useAppContext();
+  const placeholderColor = darkMode ? '#7FA8C8' : '#6D8AA4';
 
   async function handleRegister() {
     setMessage('');
@@ -69,22 +73,58 @@ export default function CadastroScreen() {
           <Text style={styles.brandText}>Seu cadastro cria a base para acompanhar horarios, doses e confirmacoes.</Text>
         </View>
 
-        <TextInput style={pharmaStyles.input} placeholder="Nome de usuario" autoComplete="name" value={nome} onChangeText={setNome} />
-        <TextInput style={pharmaStyles.input} placeholder="Idade" keyboardType="number-pad" value={idade} onChangeText={setIdade} />
-        <TextInput style={pharmaStyles.input} placeholder="Comorbidade (opcional)" value={comorbidade} onChangeText={setComorbidade} />
         <TextInput
-          style={pharmaStyles.input}
+          style={ps.input}
+          placeholder="Nome de usuario"
+          placeholderTextColor={placeholderColor}
+          selectionColor="#2F80ED"
+          autoComplete="name"
+          value={nome}
+          onChangeText={setNome}
+        />
+        <TextInput
+          style={ps.input}
+          placeholder="Idade"
+          placeholderTextColor={placeholderColor}
+          selectionColor="#2F80ED"
+          keyboardType="number-pad"
+          value={idade}
+          onChangeText={setIdade}
+        />
+        <TextInput
+          style={ps.input}
+          placeholder="Comorbidade (opcional)"
+          placeholderTextColor={placeholderColor}
+          selectionColor="#2F80ED"
+          value={comorbidade}
+          onChangeText={setComorbidade}
+        />
+        <TextInput
+          style={ps.input}
           placeholder="E-mail"
+          placeholderTextColor={placeholderColor}
+          selectionColor="#2F80ED"
           keyboardType="email-address"
           autoCapitalize="none"
           autoComplete="email"
           value={email}
           onChangeText={setEmail}
         />
-        <TextInput style={pharmaStyles.input} placeholder="Senha" secureTextEntry autoComplete="password-new" value={senha} onChangeText={setSenha} />
         <TextInput
-          style={pharmaStyles.input}
+          style={ps.input}
+          placeholder="Senha"
+          placeholderTextColor={placeholderColor}
+          selectionColor="#2F80ED"
+          secureTextEntry
+          autoComplete="password-new"
+          value={senha}
+          onChangeText={setSenha}
+        />
+        <TextInput
+          style={ps.input}
           placeholder="Confirmar senha"
+          placeholderTextColor={placeholderColor}
+          selectionColor="#2F80ED"
           secureTextEntry
           value={confirmarSenha}
           onChangeText={setConfirmarSenha}
@@ -92,8 +132,8 @@ export default function CadastroScreen() {
 
         {message ? <Text style={[styles.message, success && styles.success]}>{message}</Text> : null}
 
-        <Pressable style={pharmaStyles.primaryButton} onPress={handleRegister} disabled={loading}>
-          <Text style={pharmaStyles.primaryButtonText}>{loading ? 'Cadastrando...' : 'Cadastrar'}</Text>
+        <Pressable style={ps.primaryButton} onPress={handleRegister} disabled={loading}>
+          <Text style={ps.primaryButtonText}>{loading ? 'Cadastrando...' : 'Cadastrar'}</Text>
         </Pressable>
 
         <Pressable onPress={() => router.push('/login')}>

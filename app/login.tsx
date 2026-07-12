@@ -6,8 +6,9 @@ import {
   Card,
   PharmaScreen,
   SectionHeader,
-  pharmaStyles,
+  usePharmaStyles,
 } from "@/components/pharma-layout";
+import { useAppContext } from "@/contexts/AppContext";
 import { loginUser } from "@/lib/pharmalife";
 
 export default function LoginScreen() {
@@ -15,6 +16,9 @@ export default function LoginScreen() {
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const ps = usePharmaStyles();
+  const { darkMode } = useAppContext();
+  const placeholderColor = darkMode ? "#7FA8C8" : "#6D8AA4";
 
   async function handleLogin() {
     setMessage("");
@@ -56,8 +60,10 @@ export default function LoginScreen() {
         </View>
 
         <TextInput
-          style={pharmaStyles.input}
+          style={ps.input}
           placeholder="Digite seu e-mail"
+          placeholderTextColor={placeholderColor}
+          selectionColor="#2F80ED"
           keyboardType="email-address"
           autoCapitalize="none"
           autoComplete="email"
@@ -65,8 +71,10 @@ export default function LoginScreen() {
           onChangeText={setEmail}
         />
         <TextInput
-          style={pharmaStyles.input}
+          style={ps.input}
           placeholder="Digite sua senha"
+          placeholderTextColor={placeholderColor}
+          selectionColor="#2F80ED"
           secureTextEntry
           autoComplete="password"
           value={senha}
@@ -76,11 +84,11 @@ export default function LoginScreen() {
         {message ? <Text style={styles.message}>{message}</Text> : null}
 
         <Pressable
-          style={pharmaStyles.primaryButton}
+          style={ps.primaryButton}
           onPress={handleLogin}
           disabled={loading}
         >
-          <Text style={pharmaStyles.primaryButtonText}>
+          <Text style={ps.primaryButtonText}>
             {loading ? "Entrando..." : "Entrar"}
           </Text>
         </Pressable>
