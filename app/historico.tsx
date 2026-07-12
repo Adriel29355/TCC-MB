@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -16,34 +16,38 @@ import {
 import { useAppContext } from "@/contexts/AppContext";
 import { confirmDialog } from "@/lib/confirm-dialog";
 import {
-  API_BASE_URL,
+  confirmHistoryItem,
+  fetchHistory,
   getStoredHistory,
   HistoryItem,
+  ignoreHistoryItem,
   setStoredHistory,
 } from "@/lib/pharmalife";
 
 function nextStatus(status: HistoryItem["status"]): HistoryItem["status"] {
   if (status === "PENDENTE") return "CONFIRMADO";
-  if (status === "CONFIRMADO") return "IGNORADO";
-  return "PENDENTE";
+  return "IGNORADO";
+}
+
+function statusActionLabel(status: HistoryItem["status"]) {
+  if (status === "PENDENTE") return "Confirmar uso";
+  if (status === "CONFIRMADO") return "Marcar como ignorado";
+  return "Ignorado";
 }
 
 async function syncStatusWithApi(id: number, newStatus: HistoryItem["status"]) {
   if (newStatus === "CONFIRMADO") {
-    const res = await fetch(`${API_BASE_URL}/api/historico/${id}/confirmar`, {
-      method: "PATCH",
-    });
-    if (!res.ok) throw new Error("Erro ao confirmar no servidor.");
+    return confirmHistoryItem(id);
   } else if (newStatus === "IGNORADO") {
-    const res = await fetch(`${API_BASE_URL}/api/historico/${id}/ignorar`, {
-      method: "PATCH",
-    });
-    if (!res.ok) throw new Error("Erro ao ignorar no servidor.");
+    return ignoreHistoryItem(id);
   }
+
+  throw new Error("O backend nao possui rota para voltar status para pendente.");
 }
 
 export default function HistoricoScreen() {
   const [history, setHistory] = useState(() => getStoredHistory());
+  const [initialLoading, setInitialLoading] = useState(true);
   const [loadingId, setLoadingId] = useState<number | null>(null);
   const ps = usePharmaStyles();
   const { darkMode } = useAppContext();
@@ -54,6 +58,31 @@ export default function HistoricoScreen() {
   const confirmadoColor = darkMode ? "#34D399" : "#12805C";
   const ignoradoBg = darkMode ? "#2A0A0A" : "#FEE2E2";
   const ignoradoColor = darkMode ? "#F87171" : "#B91C1C";
+
+  useEffect(() => {
+    let active = true;
+
+    fetchHistory()
+      .then((items) => {
+        if (active) setHistory(items);
+      })
+      .catch((error) => {
+        confirmDialog(
+          "Erro",
+          error instanceof Error
+            ? error.message
+            : "Nao foi possivel buscar o historico.",
+          () => {},
+        );
+      })
+      .finally(() => {
+        if (active) setInitialLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function statusStyle(status: HistoryItem["status"]) {
     if (status === "PENDENTE")
@@ -71,9 +100,9 @@ export default function HistoricoScreen() {
     setLoadingId(id);
 
     try {
-      await syncStatusWithApi(id, newStatus);
+      const syncedItem = await syncStatusWithApi(id, newStatus);
       const updated: HistoryItem[] = history.map((h) =>
-        h.id === id ? { ...h, status: newStatus } : h,
+        h.id === id ? { ...h, ...syncedItem } : h,
       );
       setStoredHistory(updated);
       setHistory(updated);
@@ -109,7 +138,13 @@ export default function HistoricoScreen() {
         </Text>
       </View>
 
-      {history.map((item) => (
+      {initialLoading ? (
+        <Card>
+          <ActivityIndicator color="#2F80ED" />
+        </Card>
+      ) : null}
+
+      {!initialLoading && history.map((item) => (
         <Card key={item.id}>
           <View style={ps.row}>
             <View style={{ flex: 1 }}>
@@ -130,18 +165,20 @@ export default function HistoricoScreen() {
           <Pressable
             style={ps.secondaryButton}
             onPress={() => toggleStatus(item.id)}
-            disabled={loadingId === item.id}
+            disabled={loadingId === item.id || item.status === "IGNORADO"}
           >
             {loadingId === item.id ? (
               <ActivityIndicator color="#2F80ED" />
             ) : (
-              <Text style={ps.secondaryButtonText}>Alterar status</Text>
+              <Text style={ps.secondaryButtonText}>
+                {statusActionLabel(item.status)}
+              </Text>
             )}
           </Pressable>
         </Card>
       ))}
 
-      {history.length === 0 && (
+      {!initialLoading && history.length === 0 && (
         <Text style={ps.body}>Nenhum registro no historico.</Text>
       )}
     </PharmaScreen>

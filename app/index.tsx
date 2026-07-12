@@ -14,6 +14,7 @@ import { confirmDialog } from "@/lib/confirm-dialog";
 import {
   adherencePercent,
   deleteMedication,
+  fetchHistory,
   fetchMedications,
   getStoredHistory,
   getStoredReminders,
@@ -37,7 +38,27 @@ export default function HomeScreen() {
   const ps = usePharmaStyles();
 
   useEffect(() => {
-    fetchMedications().then(setMedications);
+    let active = true;
+
+    fetchMedications()
+      .then((items) => {
+        if (active) setMedications(items);
+      })
+      .catch(() => {
+        if (active) setMedications([]);
+      });
+
+    fetchHistory()
+      .then((items) => {
+        if (active) setHistory(items);
+      })
+      .catch(() => {
+        if (active) setHistory([]);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const colors = {
@@ -65,7 +86,7 @@ export default function HomeScreen() {
   async function handleTaken(medication: Medication) {
     try {
       const entry = await markMedicationAsTaken(medication);
-      setHistory([entry, ...history]);
+      setHistory((current) => [entry, ...current]);
       setMedications([...medications]);
     } catch (error) {
       confirmDialog(

@@ -17,12 +17,21 @@ import {
 
 export default function AgendaScreen() {
   const [medications, setMedications] = useState<Medication[]>([]);
+  const [error, setError] = useState("");
   const reminders = getStoredReminders();
   const ps = usePharmaStyles();
   const { darkMode } = useAppContext();
 
   useEffect(() => {
-    fetchMedications().then(setMedications);
+    fetchMedications()
+      .then(setMedications)
+      .catch((err) => {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Nao foi possivel buscar a agenda.",
+        );
+      });
   }, []);
 
   const timeBoxBg = darkMode ? "#0D2238" : "#EAF6FF";
@@ -67,7 +76,9 @@ export default function AgendaScreen() {
         ))}
 
         {medications.length === 0 && (
-          <Text style={ps.body}>Nenhum medicamento cadastrado.</Text>
+          <Text style={ps.body}>
+            {error || "Nenhum medicamento cadastrado."}
+          </Text>
         )}
       </Card>
 
