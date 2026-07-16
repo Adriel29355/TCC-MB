@@ -1,7 +1,9 @@
 import { Stack } from "expo-router";
+import { useEffect } from "react";
 import { LogBox } from "react-native";
 
 import { AppProvider } from "@/contexts/AppContext";
+import { registerForPushNotificationsAsync } from "@/lib/notifications";
 
 const ignoredWarnings = [
   "Image: style.resizeMode is deprecated. Please use props.resizeMode.",
@@ -34,6 +36,10 @@ if (!globalWithConsoleFilter.__tccConsoleWarningsFiltered) {
 }
 
 export default function Layout() {
+  useEffect(() => {
+    registerForPushNotificationsAsync();
+  }, []);
+
   return (
     <AppProvider>
       <Stack

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "146607638516",
+    "project_id": "pharmalife-tcc",
+    "storage_bucket": "pharmalife-tcc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:146607638516:android:2986c5ee8666babee95ba1",
+        "android_client_info": {
+          "package_name": "com.nyxalorian.pharmalife"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkrTqoaBVTfE-hiEVBwxxKSmY4A6jbDok"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
