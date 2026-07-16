@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
+import type { Medication } from "./pharmalife";
 
 export async function registerForPushNotificationsAsync() {
   if (!Device.isDevice) {
@@ -36,14 +37,7 @@ export async function registerForPushNotificationsAsync() {
   return token;
 }
 
-export async function scheduleMedicationNotification(medication: {
-  id: number;
-  nome: string;
-  descricao?: string;
-  agenda?: {
-    horario?: string;
-  };
-}) {
+export async function scheduleMedicationNotification(medication: Medication) {
   if (!Device.isDevice) {
     return null;
   }
@@ -64,15 +58,17 @@ export async function scheduleMedicationNotification(medication: {
   try {
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
-        title: medication.nome || "Lembrete de medicamento",
+        title: medication.nome,
         body: medication.descricao || "Hora de tomar seu medicamento.",
         sound: "default",
-        data: { medicationId: medication.id },
+        data: {
+          medicationId: medication.id,
+        },
       },
       trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour,
         minute,
-        repeats: true,
       },
     });
 
