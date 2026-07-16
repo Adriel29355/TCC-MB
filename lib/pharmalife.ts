@@ -240,7 +240,10 @@ function normalizeHistoryStatus(status: unknown): HistoryItem["status"] {
   return "PENDENTE";
 }
 
-function normalizeMedication(value: unknown, agendaFallback?: Medication["agenda"]) {
+function normalizeMedication(
+  value: unknown,
+  agendaFallback?: Medication["agenda"],
+) {
   const medication = asRecord(value);
   const agenda = asRecord(medication.agenda);
   const resolvedAgenda = medication.agenda
@@ -427,9 +430,7 @@ export async function fetchMedications(): Promise<Medication[]> {
   const user = getCurrentUser();
   if (!user) return [];
 
-  const agendas = await fetchJson<unknown[]>(
-    `/api/usuarios/${user.id}/agenda`,
-  );
+  const agendas = await fetchJson<unknown[]>(`/api/usuarios/${user.id}/agenda`);
   if (!agendas || agendas.length === 0) return [];
 
   const medicationLists = await Promise.all(
@@ -562,7 +563,10 @@ export async function confirmHistoryItem(id: number) {
   return normalizeHistoryItem(item);
 }
 
-export async function ignoreHistoryItem(id: number, motivoIgnorado = "Outro motivo") {
+export async function ignoreHistoryItem(
+  id: number,
+  motivoIgnorado = "Outro motivo",
+) {
   const item = await fetchJson<unknown>(`/api/historico/${id}/ignorar`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
