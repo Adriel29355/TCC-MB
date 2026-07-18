@@ -42,6 +42,12 @@ function apiUrl(path: string) {
 const NETWORK_ERROR_MESSAGE =
   "Nao foi possivel conectar ao servidor. Verifique sua conexao e tente novamente.";
 
+function reportIntegrationError(operation: string, error: unknown) {
+  if (__DEV__) {
+    console.warn(`[pharmalife] ${operation} falhou`, error);
+  }
+}
+
 function isFetchNetworkError(error: unknown) {
   if (error instanceof TypeError) return true;
   if (!(error instanceof Error)) return false;
@@ -132,6 +138,7 @@ export type MedicationInput = {
 
 export type HistoryItem = {
   id: number;
+  medicationId?: number;
   nome: string;
   dosagem: string;
   observacoes?: string;
@@ -356,9 +363,20 @@ function normalizeMedication(
 
 function normalizeHistoryItem(value: unknown) {
   const item = asRecord(value);
+  const medication = asRecord(item.medicamento ?? item.medication);
+  const medicationId = Number(
+    item.medicationId ??
+      item.medicamentoId ??
+      item.idMedicamento ??
+      medication.id,
+  );
 
   return {
     id: Number(item.id),
+    medicationId:
+      Number.isInteger(medicationId) && medicationId > 0
+        ? medicationId
+        : undefined,
     nome: asString(item.nome, "Medicamento"),
     dosagem: asString(item.dosagem, ""),
     observacoes: asString(item.observacoes, ""),
@@ -434,8 +452,9 @@ export function isUserAuthenticated() {
 
 export async function setStoredUser(user: User) {
   try {
+    const { senha: _senha, ...safeUser } = user;
     await writeStoredUserAsync(
-      JSON.stringify({ id: user.id, nome: user.nome, email: user.email }),
+      JSON.stringify(safeUser),
     );
   } catch {
     throw new Error("Nao foi possivel proteger a sessao neste aparelho.");
@@ -544,12 +563,23 @@ export async function registerUser(user: RegisterUserInput) {
   );
 
   if (!onboardingResponse.ok) {
-    throw new Error(
-      await parseApiError(
-        onboardingResponse,
-        "Conta criada, mas nao foi possivel completar o cadastro.",
-      ),
+    const onboardingError = await parseApiError(
+      onboardingResponse,
+      "Nao foi possivel completar o cadastro.",
     );
+    const rollbackResponse = await fetchApi(`/api/usuarios/${createdUser.id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ senhaAtual: user.senha }),
+    }).catch(() => null);
+
+    if (!rollbackResponse?.ok) {
+      throw new Error(
+        `A conta foi criada, mas o cadastro ficou incompleto. Tente entrar com o e-mail informado ou recupere a conta. Detalhe: ${onboardingError}`,
+      );
+    }
+
+    throw new Error(`${onboardingError} A criacao da conta foi desfeita.`);
   }
 
   const onboardedUser = normalizeUser(await onboardingResponse.json());
@@ -596,7 +626,9 @@ export async function fetchMedications(): Promise<Medication[]> {
     .then(({ syncMedicationNotifications }) =>
       syncMedicationNotifications(medications),
     )
-    .catch(() => {});
+    .catch((error) =>
+      reportIntegrationError("sincronizacao de notificacoes", error),
+    );
 
   return medications;
 }
@@ -703,7 +735,9 @@ export async function addMedication(
         },
       });
     notificationScheduled = Boolean(scheduled?.length);
-  } catch {}
+  } catch (error) {
+    reportIntegrationError("agendamento da notificacao", error);
+  }
 
   return { medication: normalizedMedication, notificationScheduled };
 }
@@ -805,7 +839,9 @@ export async function updateMedication(
     await cancelMedicationNotification(existing.id);
     const scheduled = await scheduleMedicationNotification(medication);
     notificationScheduled = Boolean(scheduled?.length);
-  } catch {}
+  } catch (error) {
+    reportIntegrationError("atualizacao da notificacao", error);
+  }
 
   return { medication, notificationScheduled };
 }
@@ -823,7 +859,9 @@ export async function deleteMedication(medication: Medication): Promise<void> {
   try {
     const { cancelMedicationNotification } = await import("./notifications");
     await cancelMedicationNotification(medication.id);
-  } catch {}
+  } catch (error) {
+    reportIntegrationError("cancelamento da notificacao", error);
+  }
 
   const agendaId = medication.agenda?.id;
   if (!agendaId) return;
@@ -836,7 +874,9 @@ export async function deleteMedication(medication: Medication): Promise<void> {
     if (remainingMedications.length === 0) {
       await fetchApi(`/api/agenda/${agendaId}`, { method: "DELETE" });
     }
-  } catch {}
+  } catch (error) {
+    reportIntegrationError("remocao da agenda vazia", error);
+  }
 }
 
 export async function fetchHistory(): Promise<HistoryItem[]> {
@@ -899,7 +939,10 @@ export async function markMedicationAsTaken(medication: Medication) {
     { method: "PATCH" },
   );
 
-  const entry = normalizeHistoryItem(confirmado);
+  const entry = {
+    ...normalizeHistoryItem(confirmado),
+    medicationId: medication.id,
+  };
 
   const history = getStoredHistory();
   setStoredHistory([entry, ...history]);
@@ -910,17 +953,43 @@ export function adherencePercent(
   medications: Medication[],
   history: HistoryItem[],
 ) {
-  const expected = medications.length * 7;
+  const now = new Date();
+  const windowStart = new Date(now);
+  windowStart.setDate(windowStart.getDate() - 7);
+
+  const expected = medications.reduce((total, medication) => {
+    const frequency = medication.tipo
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s/g, "")
+      .toLowerCase();
+
+    if (frequency === "8h" || frequency.includes("8em8")) return total + 21;
+    if (frequency === "12h" || frequency.includes("12em12")) return total + 14;
+    if (frequency.startsWith("seman")) return total + 1;
+    return total + 7;
+  }, 0);
   if (expected === 0) return 0;
 
-  return Math.min(
-    100,
-    Math.round(
-      (history.filter((item) => item.status === "CONFIRMADO").length /
-        expected) *
-        100,
-    ),
-  );
+  const confirmedInWindow = history.filter((item) => {
+    if (item.status !== "CONFIRMADO" || !item.dataConfirmacao) return false;
+    const confirmationDate = new Date(item.dataConfirmacao);
+    const belongsToCurrentMedication = item.medicationId
+      ? medications.some((medication) => medication.id === item.medicationId)
+      : medications.some(
+          (medication) =>
+            medication.nome.trim().toLocaleLowerCase() ===
+            item.nome.trim().toLocaleLowerCase(),
+        );
+    return (
+      belongsToCurrentMedication &&
+      !Number.isNaN(confirmationDate.getTime()) &&
+      confirmationDate >= windowStart &&
+      confirmationDate <= now
+    );
+  }).length;
+
+  return Math.min(100, Math.round((confirmedInWindow / expected) * 100));
 }
 
 export async function updateProfile(

@@ -5,6 +5,14 @@ import type { Medication } from "./pharmalife";
 
 const MEDICATION_CHANNEL_ID = "medication-reminders-v3";
 const BRAND_BLUE = "#2F80ED";
+const SCHEDULING_HORIZON_DAYS = 30;
+const MAX_NOTIFICATIONS_PER_MEDICATION = 100;
+
+function reportNotificationError(operation: string, error: unknown) {
+  if (__DEV__) {
+    console.warn(`[notifications] ${operation} falhou`, error);
+  }
+}
 
 if (Platform.OS !== "web") {
   Notifications.setNotificationHandler({
@@ -50,7 +58,8 @@ async function ensureNotificationPermissionAsync() {
 export async function initializeNotificationsAsync() {
   try {
     return await ensureNotificationPermissionAsync();
-  } catch {
+  } catch (error) {
+    reportNotificationError("inicializacao", error);
     return false;
   }
 }
@@ -60,7 +69,8 @@ export async function getNotificationPermissionAsync() {
   try {
     const permission = await Notifications.getPermissionsAsync();
     return permission.status;
-  } catch {
+  } catch (error) {
+    reportNotificationError("consulta de permissao", error);
     return "undetermined" as const;
   }
 }
@@ -94,22 +104,60 @@ function normalizeFrequency(tipo: string) {
   return "daily";
 }
 
-function addMinutes(time: { hour: number; minute: number }, minutes: number) {
-  const totalMinutes = (time.hour * 60 + time.minute + minutes) % (24 * 60);
-  return {
-    hour: Math.floor(totalMinutes / 60),
-    minute: totalMinutes % 60,
-  };
+function parseLocalDate(value?: string) {
+  const match = value?.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?/,
+  );
+  if (!match) return null;
+
+  const date = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+    Number(match[4] ?? 0),
+    Number(match[5] ?? 0),
+    Number(match[6] ?? 0),
+  );
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function weekdayFromLocalDate(value?: string) {
-  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!match) return new Date().getDay() + 1;
+function notificationDates(
+  medication: Medication,
+  time: { hour: number; minute: number },
+) {
+  const now = new Date();
+  const horizonEnd = new Date(now);
+  horizonEnd.setDate(horizonEnd.getDate() + SCHEDULING_HORIZON_DAYS);
 
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  return Number.isNaN(date.getTime())
-    ? new Date().getDay() + 1
-    : date.getDay() + 1;
+  const treatmentStart = parseLocalDate(medication.agenda?.dataInicio) ?? now;
+  const treatmentEnd = parseLocalDate(medication.agenda?.dataFim) ?? horizonEnd;
+  const scheduleEnd = treatmentEnd < horizonEnd ? treatmentEnd : horizonEnd;
+  if (scheduleEnd <= now) return [];
+
+  const frequency = normalizeFrequency(medication.tipo);
+  const occurrence = new Date(treatmentStart);
+  occurrence.setHours(time.hour, time.minute, 0, 0);
+
+  const advance = () => {
+    if (frequency === "8h") occurrence.setHours(occurrence.getHours() + 8);
+    else if (frequency === "12h")
+      occurrence.setHours(occurrence.getHours() + 12);
+    else if (frequency === "weekly")
+      occurrence.setDate(occurrence.getDate() + 7);
+    else occurrence.setDate(occurrence.getDate() + 1);
+  };
+
+  while (occurrence < treatmentStart || occurrence <= now) advance();
+
+  const dates: Date[] = [];
+  while (
+    occurrence <= scheduleEnd &&
+    dates.length < MAX_NOTIFICATIONS_PER_MEDICATION
+  ) {
+    dates.push(new Date(occurrence));
+    advance();
+  }
+  return dates;
 }
 
 function medicationNotificationContent(
@@ -143,43 +191,26 @@ export async function scheduleMedicationNotification(medication: Medication) {
 
     const channelId =
       Platform.OS === "android" ? MEDICATION_CHANNEL_ID : undefined;
-    const frequency = normalizeFrequency(medication.tipo);
-
-    if (frequency === "weekly") {
-      const weekday = weekdayFromLocalDate(medication.agenda?.dataInicio);
-
-      return await Promise.all([
-        Notifications.scheduleNotificationAsync({
-          content: medicationNotificationContent(medication, 0),
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-            channelId,
-            weekday,
-            ...time,
-          },
-        }),
-      ]);
-    }
-
-    const intervalHours = frequency === "8h" ? 8 : frequency === "12h" ? 12 : 24;
-    const occurrences = 24 / intervalHours;
-    const times = Array.from({ length: occurrences }, (_, index) =>
-      addMinutes(time, index * intervalHours * 60),
-    );
-
-    return await Promise.all(
-      times.map((scheduledTime, occurrence) =>
-        Notifications.scheduleNotificationAsync({
+    const dates = notificationDates(medication, time);
+    const identifiers: string[] = [];
+    for (const [occurrence, date] of dates.entries()) {
+      identifiers.push(
+        await Notifications.scheduleNotificationAsync({
           content: medicationNotificationContent(medication, occurrence),
           trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DAILY,
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
             channelId,
-            ...scheduledTime,
+            date,
           },
         }),
-      ),
+      );
+    }
+    return identifiers;
+  } catch (error) {
+    reportNotificationError(
+      `agendamento do medicamento ${medication.id}`,
+      error,
     );
-  } catch {
     return null;
   }
 }
@@ -203,7 +234,12 @@ export async function cancelMedicationNotification(medicationId: number) {
         ),
       ),
     );
-  } catch {}
+  } catch (error) {
+    reportNotificationError(
+      `cancelamento do medicamento ${medicationId}`,
+      error,
+    );
+  }
 }
 
 export async function clearMedicationNotificationsAsync() {
@@ -222,7 +258,9 @@ export async function clearMedicationNotificationsAsync() {
         ),
       ),
     );
-  } catch {}
+  } catch (error) {
+    reportNotificationError("limpeza dos lembretes", error);
+  }
 }
 
 export async function syncMedicationNotifications(
@@ -247,10 +285,10 @@ export async function syncMedicationNotifications(
       ),
     );
 
-    await Promise.all(
-      medications.map((medication) =>
-        scheduleMedicationNotification(medication),
-      ),
-    );
-  } catch {}
+    for (const medication of medications) {
+      await scheduleMedicationNotification(medication);
+    }
+  } catch (error) {
+    reportNotificationError("sincronizacao dos lembretes", error);
+  }
 }

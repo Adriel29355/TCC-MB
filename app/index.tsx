@@ -39,17 +39,34 @@ export default function HomeScreen() {
   const [medications, setMedications] = useState<Medication[]>([]);
   const [history, setHistory] = useState(() => getStoredHistory());
   const user = getStoredUser();
-  const confirmedNames = new Set(
-    history
-      .filter(
-        (item) =>
-          item.status === "CONFIRMADO" && isToday(item.dataConfirmacao),
-      )
-      .map((item) => item.nome.trim().toLocaleLowerCase()),
+  const confirmedToday = history.filter(
+    (item) => item.status === "CONFIRMADO" && isToday(item.dataConfirmacao),
   );
-  const confirmed = medications.filter((medication) =>
-    confirmedNames.has(medication.nome.trim().toLocaleLowerCase()),
-  ).length;
+  const confirmedMedicationIds = new Set(
+    confirmedToday
+      .map((item) => item.medicationId)
+      .filter((id): id is number => id != null),
+  );
+  const medicationNameCounts = medications.reduce<Record<string, number>>(
+    (counts, medication) => {
+      const name = medication.nome.trim().toLocaleLowerCase();
+      counts[name] = (counts[name] ?? 0) + 1;
+      return counts;
+    },
+    {},
+  );
+  const unambiguousLegacyNames = new Set(
+    confirmedToday
+      .filter((item) => item.medicationId == null)
+      .map((item) => item.nome.trim().toLocaleLowerCase())
+      .filter((name) => medicationNameCounts[name] === 1),
+  );
+  const confirmed = medications.filter((medication) => {
+    if (confirmedMedicationIds.has(medication.id)) return true;
+    return unambiguousLegacyNames.has(
+      medication.nome.trim().toLocaleLowerCase(),
+    );
+  }).length;
   const pending = Math.max(0, medications.length - confirmed);
   const adherence = adherencePercent(medications, history);
   const { darkMode, largeText } = useAppContext();
@@ -262,7 +279,7 @@ export default function HomeScreen() {
             iconBackground={darkMode ? "#2D1F00" : "#FEF3C7"}
           />
           <StatCard
-            label="Adesao geral"
+            label="Adesao nos ultimos 7 dias"
             value={`${adherence}%`}
             icon="analytics-outline"
             accentColor="#2F80ED"
