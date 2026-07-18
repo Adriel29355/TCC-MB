@@ -1,9 +1,9 @@
-import { Stack } from "expo-router";
-import { useEffect } from "react";
-import { LogBox } from "react-native";
+import { router, Stack, usePathname } from "expo-router";
+import { PropsWithChildren, useEffect } from "react";
+import { ActivityIndicator, LogBox, StyleSheet, View } from "react-native";
 
-import { AppProvider } from "@/contexts/AppContext";
-import { registerForPushNotificationsAsync } from "@/lib/notifications";
+import { AppProvider, useAppContext } from "@/contexts/AppContext";
+import { initializeNotificationsAsync } from "@/lib/notifications";
 
 const ignoredWarnings = [
   "Image: style.resizeMode is deprecated. Please use props.resizeMode.",
@@ -12,37 +12,39 @@ const ignoredWarnings = [
 
 LogBox.ignoreLogs(ignoredWarnings);
 
-const globalWithConsoleFilter = globalThis as typeof globalThis & {
-  __tccConsoleWarningsFiltered?: boolean;
-};
+const PUBLIC_ROUTES = new Set(["/login", "/cadastro", "/termos-de-uso"]);
 
-if (!globalWithConsoleFilter.__tccConsoleWarningsFiltered) {
-  const originalWarn = console.warn;
+function SessionGuard({ children }: PropsWithChildren) {
+  const pathname = usePathname();
+  const { authenticated, sessionReady } = useAppContext();
+  const publicRoute = PUBLIC_ROUTES.has(pathname);
 
-  console.warn = (...args) => {
-    const firstArg = args[0];
+  useEffect(() => {
+    if (!sessionReady) return;
+    if (!authenticated && !publicRoute) router.replace("/login");
+    if (authenticated && publicRoute) router.replace("/");
+  }, [authenticated, publicRoute, sessionReady]);
 
-    if (
-      typeof firstArg === "string" &&
-      ignoredWarnings.some((warning) => firstArg.includes(warning))
-    ) {
-      return;
-    }
+  useEffect(() => {
+    if (authenticated) initializeNotificationsAsync();
+  }, [authenticated]);
 
-    originalWarn(...args);
-  };
+  if (!sessionReady || (!authenticated && !publicRoute)) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator color="#2F80ED" size="large" />
+      </View>
+    );
+  }
 
-  globalWithConsoleFilter.__tccConsoleWarningsFiltered = true;
+  return children;
 }
 
 export default function Layout() {
-  useEffect(() => {
-    registerForPushNotificationsAsync();
-  }, []);
-
   return (
     <AppProvider>
-      <Stack
+      <SessionGuard>
+        <Stack
         screenOptions={{
           headerStyle: { backgroundColor: "#F8FCFF" },
           headerTintColor: "#14324A",
@@ -53,6 +55,10 @@ export default function Layout() {
         <Stack.Screen name="index" options={{ title: "PharmaLife" }} />
         <Stack.Screen name="login" options={{ title: "Entrar" }} />
         <Stack.Screen name="cadastro" options={{ title: "Criar conta" }} />
+        <Stack.Screen
+          name="termos-de-uso"
+          options={{ title: "Termos de uso" }}
+        />
         <Stack.Screen name="agenda" options={{ title: "Agenda" }} />
         <Stack.Screen name="adicionar" options={{ title: "Adicionar" }} />
         <Stack.Screen name="historico" options={{ title: "Historico" }} />
@@ -63,7 +69,17 @@ export default function Layout() {
         <Stack.Screen name="ajuda" options={{ title: "Ajuda" }} />
         <Stack.Screen name="sobre" options={{ title: "Sobre" }} />
         <Stack.Screen name="modal" options={{ title: "Atendimentos" }} />
-      </Stack>
+        </Stack>
+      </SessionGuard>
     </AppProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F8FCFF",
+  },
+});
