@@ -183,9 +183,15 @@ export function Card({ children }: PropsWithChildren) {
 export function StatCard({
   label,
   value,
+  icon,
+  accentColor = "#2F80ED",
+  iconBackground = "#EAF6FF",
 }: {
   label: string;
   value: string | number;
+  icon?: keyof typeof Ionicons.glyphMap;
+  accentColor?: string;
+  iconBackground?: string;
 }) {
   const { darkMode, largeText } = useAppContext();
   return (
@@ -198,7 +204,18 @@ export function StatCard({
         },
       ]}
     >
-      <Text style={[styles.statValue, largeText && styles.statValueLarge]}>
+      {icon ? (
+        <View style={[styles.statIcon, { backgroundColor: iconBackground }] }>
+          <Ionicons name={icon} size={18} color={accentColor} />
+        </View>
+      ) : null}
+      <Text
+        style={[
+          styles.statValue,
+          { color: accentColor },
+          largeText && styles.statValueLarge,
+        ]}
+      >
         {value}
       </Text>
       <Text
@@ -431,11 +448,22 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     minWidth: 92,
+    minHeight: 118,
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: "#D8ECFF",
     borderRadius: 12,
     backgroundColor: "#FFFFFF",
-    padding: 14,
+    gap: 5,
+    padding: 12,
+  },
+  statIcon: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
   },
   statValue: {
     color: "#2F80ED",
@@ -449,6 +477,8 @@ const styles = StyleSheet.create({
     color: "#5F7F9B",
     fontSize: 12,
     fontWeight: "700",
+    lineHeight: 16,
+    textAlign: "center",
   },
   statLabelLarge: {
     fontSize: 15,

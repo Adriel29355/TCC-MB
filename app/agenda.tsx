@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -11,14 +12,12 @@ import {
 import { useAppContext } from "@/contexts/AppContext";
 import {
   fetchMedications,
-  getStoredReminders,
   Medication,
 } from "@/lib/pharmalife";
 
 export default function AgendaScreen() {
   const [medications, setMedications] = useState<Medication[]>([]);
   const [error, setError] = useState("");
-  const reminders = getStoredReminders();
   const ps = usePharmaStyles();
   const { darkMode } = useAppContext();
 
@@ -36,15 +35,13 @@ export default function AgendaScreen() {
 
   const timeBoxBg = darkMode ? "#0D2238" : "#EAF6FF";
   const lineBg = darkMode ? "#1E3448" : "#D8ECFF";
-  const reminderBorder = darkMode ? "#1E3448" : "#EDF7FF";
-  const reminderTitle = darkMode ? "#C8E0F4" : "#14324A";
 
   return (
     <PharmaScreen>
       <SectionHeader
         eyebrow="Agenda"
         title="Horarios do tratamento"
-        subtitle="Veja o que precisa ser tomado e quais lembretes estao marcados."
+        subtitle="Veja os medicamentos e os horarios programados."
       />
 
       <Card>
@@ -72,6 +69,22 @@ export default function AgendaScreen() {
                 <Text style={ps.small}>{medication.complemento}</Text>
               ) : null}
             </View>
+            <Pressable
+              accessibilityLabel={`Editar ${medication.nome}`}
+              accessibilityRole="button"
+              onPress={() =>
+                router.push({
+                  pathname: "/adicionar",
+                  params: { id: String(medication.id) },
+                })
+              }
+              style={({ pressed }) => [
+                styles.editButton,
+                { opacity: pressed ? 0.65 : 1 },
+              ]}
+            >
+              <Ionicons name="create-outline" size={20} color="#2F80ED" />
+            </Pressable>
           </View>
         ))}
 
@@ -82,25 +95,6 @@ export default function AgendaScreen() {
         )}
       </Card>
 
-      <Card>
-        <Text style={ps.cardTitle}>Lembretes importantes</Text>
-        {reminders.map((reminder) => (
-          <View
-            key={reminder.id}
-            style={[styles.reminder, { borderTopColor: reminderBorder }]}
-          >
-            <Text style={styles.timeText}>{reminder.horario}</Text>
-            <View style={styles.info}>
-              <Text style={[styles.reminderTitle, { color: reminderTitle }]}>
-                {reminder.titulo}
-              </Text>
-              <Text style={ps.small}>
-                {reminder.data} • {reminder.descricao}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </Card>
     </PharmaScreen>
   );
 }
@@ -141,15 +135,12 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 3,
   },
-  reminder: {
-    flexDirection: "row",
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#EDF7FF",
-    paddingTop: 12,
-  },
-  reminderTitle: {
-    color: "#14324A",
-    fontWeight: "800",
+  editButton: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    backgroundColor: "#EAF6FF",
   },
 });

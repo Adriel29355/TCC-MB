@@ -8,25 +8,35 @@ import {
   SectionHeader,
   usePharmaStyles,
 } from "@/components/pharma-layout";
+import { FieldError, INVALID_INPUT_STYLE } from "@/components/field-error";
+import { PasswordInput } from "@/components/password-input";
 import { useAppContext } from "@/contexts/AppContext";
 import { loginUser } from "@/lib/pharmalife";
+import {
+  FIELD_LIMITS,
+  hasValidationErrors,
+  validateEmail,
+  validateLoginPassword,
+} from "@/lib/validation";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [errors, setErrors] = useState({ email: "", senha: "" });
   const ps = usePharmaStyles();
   const { darkMode } = useAppContext();
   const placeholderColor = darkMode ? "#7FA8C8" : "#6D8AA4";
 
   async function handleLogin() {
     setMessage("");
-
-    if (!email.trim() || !senha.trim()) {
-      setMessage("Informe seu e-mail e sua senha para entrar.");
-      return;
-    }
+    const nextErrors = {
+      email: validateEmail(email),
+      senha: validateLoginPassword(senha),
+    };
+    setErrors(nextErrors);
+    if (hasValidationErrors(nextErrors)) return;
 
     setLoading(true);
     try {
@@ -60,26 +70,60 @@ export default function LoginScreen() {
         </View>
 
         <TextInput
-          style={ps.input}
+          accessibilityLabel="E-mail"
+          style={[ps.input, errors.email && INVALID_INPUT_STYLE]}
           placeholder="Digite seu e-mail"
           placeholderTextColor={placeholderColor}
           selectionColor="#2F80ED"
           keyboardType="email-address"
           autoCapitalize="none"
           autoComplete="email"
+          maxLength={FIELD_LIMITS.email}
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(value) => {
+            setEmail(value);
+            if (errors.email) {
+              setErrors((current) => ({
+                ...current,
+                email: validateEmail(value),
+              }));
+            }
+          }}
+          onBlur={() =>
+            setErrors((current) => ({
+              ...current,
+              email: validateEmail(email),
+            }))
+          }
         />
-        <TextInput
-          style={ps.input}
+        <FieldError message={errors.email} />
+        <PasswordInput
+          accessibilityLabel="Senha"
+          style={[ps.input, errors.senha && INVALID_INPUT_STYLE]}
           placeholder="Digite sua senha"
           placeholderTextColor={placeholderColor}
           selectionColor="#2F80ED"
-          secureTextEntry
           autoComplete="password"
+          maxLength={FIELD_LIMITS.password}
           value={senha}
-          onChangeText={setSenha}
+          onChangeText={(value) => {
+            setSenha(value);
+            if (errors.senha) {
+              setErrors((current) => ({
+                ...current,
+                senha: validateLoginPassword(value),
+              }));
+            }
+          }}
+          onBlur={() =>
+            setErrors((current) => ({
+              ...current,
+              senha: validateLoginPassword(senha),
+            }))
+          }
+          onSubmitEditing={handleLogin}
         />
+        <FieldError message={errors.senha} />
 
         {message ? <Text style={styles.message}>{message}</Text> : null}
 
@@ -121,7 +165,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   message: {
-    color: "#C2410C",
+    color: "#DC2626",
     fontWeight: "700",
   },
   link: {

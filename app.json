@@ -13,6 +13,9 @@
     },
     "android": {
       "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "SCHEDULE_EXACT_ALARM"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#EAF6FF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -29,7 +32,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#2F80ED",
+          "defaultChannel": "medication-reminders-v3"
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -41,7 +51,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

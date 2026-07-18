@@ -18,3 +18,17 @@ export function confirmDialog(
     ]);
   }
 }
+
+export function alertDialog(
+  title: string,
+  message: string,
+  onClose?: () => void,
+) {
+  if (Platform.OS === "web") {
+    window.alert(`${title}\n\n${message}`);
+    onClose?.();
+    return;
+  }
+
+  Alert.alert(title, message, [{ text: "OK", onPress: onClose }]);
+}

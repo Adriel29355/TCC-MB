@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Redirect, router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
@@ -17,20 +17,38 @@ import {
   fetchHistory,
   fetchMedications,
   getStoredHistory,
-  getStoredReminders,
   getStoredUser,
   isUserAuthenticated,
   markMedicationAsTaken,
   Medication,
 } from "@/lib/pharmalife";
 
+function isToday(value?: string) {
+  if (!value) return false;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const today = new Date();
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  );
+}
+
 export default function HomeScreen() {
   const [medications, setMedications] = useState<Medication[]>([]);
   const [history, setHistory] = useState(() => getStoredHistory());
-  const reminders = useMemo(() => getStoredReminders(), []);
   const user = getStoredUser();
-  const confirmed = history.filter(
-    (item) => item.status === "CONFIRMADO",
+  const confirmedNames = new Set(
+    history
+      .filter(
+        (item) =>
+          item.status === "CONFIRMADO" && isToday(item.dataConfirmacao),
+      )
+      .map((item) => item.nome.trim().toLocaleLowerCase()),
+  );
+  const confirmed = medications.filter((medication) =>
+    confirmedNames.has(medication.nome.trim().toLocaleLowerCase()),
   ).length;
   const pending = Math.max(0, medications.length - confirmed);
   const adherence = adherencePercent(medications, history);
@@ -73,11 +91,11 @@ export default function HomeScreen() {
     brandBg: darkMode ? "#0B1520" : "#FFFFFF",
     timeBoxBg: darkMode ? "#0D2238" : "#EAF6FF",
     itemTitle: darkMode ? "#C8E0F4" : "#14324A",
-    reminderBg: darkMode ? "#0D2238" : "#EAF6FF",
     secondaryBg: darkMode ? "#111E2D" : "#FFFFFF",
     secondaryBorder: "#2F80ED",
     checkBg: darkMode ? "#0A2A1A" : "#DDF8EA",
     checkText: darkMode ? "#34D399" : "#12805C",
+    editBg: darkMode ? "#0D2238" : "#EAF6FF",
     deleteBg: darkMode ? "#2A0A0A" : "#FFF5F5",
     statusBadgeBg: darkMode ? "#0A2A1A" : "#DDF8EA",
     statusDotColor: darkMode ? "#34D399" : "#12805C",
@@ -103,7 +121,7 @@ export default function HomeScreen() {
       `Deseja excluir "${medication.nome}"?`,
       async () => {
         try {
-          await deleteMedication(medication.id);
+          await deleteMedication(medication);
           setMedications((prev) => prev.filter((m) => m.id !== medication.id));
         } catch (error) {
           confirmDialog(
@@ -219,10 +237,38 @@ export default function HomeScreen() {
         </Text>
       </View>
 
-      <View style={styles.stats}>
-        <StatCard label="Tomados" value={confirmed} />
-        <StatCard label="Pendentes" value={pending} />
-        <StatCard label="Adesão" value={`${adherence}%`} />
+      <View style={styles.summarySection}>
+        <View style={styles.summaryHeading}>
+          <Text style={[styles.summaryTitle, { color: colors.panelTitle }] }>
+            Resumo de hoje
+          </Text>
+          <Text style={[styles.summaryCaption, { color: colors.panelText }] }>
+            Acompanhe rapidamente sua rotina
+          </Text>
+        </View>
+        <View style={styles.stats}>
+          <StatCard
+            label="Tomados hoje"
+            value={confirmed}
+            icon="checkmark-circle-outline"
+            accentColor={darkMode ? "#34D399" : "#12805C"}
+            iconBackground={darkMode ? "#0A2A1A" : "#DDF8EA"}
+          />
+          <StatCard
+            label="Pendentes hoje"
+            value={pending}
+            icon="time-outline"
+            accentColor={darkMode ? "#FBBF24" : "#B45309"}
+            iconBackground={darkMode ? "#2D1F00" : "#FEF3C7"}
+          />
+          <StatCard
+            label="Adesao geral"
+            value={`${adherence}%`}
+            icon="analytics-outline"
+            accentColor="#2F80ED"
+            iconBackground={darkMode ? "#0D2238" : "#EAF6FF"}
+          />
+        </View>
       </View>
 
       <Card>
@@ -253,6 +299,7 @@ export default function HomeScreen() {
               </View>
               <View style={styles.medicationInfo}>
                 <Text
+                  numberOfLines={2}
                   style={[
                     styles.itemTitle,
                     { color: colors.itemTitle, fontSize: fs.item },
@@ -260,40 +307,73 @@ export default function HomeScreen() {
                 >
                   {medication.nome}
                 </Text>
-                <Text style={[ps.body, largeText && { fontSize: fs.small }]}>
+                <Text
+                  numberOfLines={2}
+                  style={[ps.body, largeText && { fontSize: fs.small }]}
+                >
                   {medication.descricao} | {medication.tipo}
                 </Text>
               </View>
-              <Pressable
-                style={[
-                  styles.checkButton,
-                  { backgroundColor: colors.checkBg },
-                ]}
-                onPress={() => handleTaken(medication)}
-              >
-                <Text
+              <View style={styles.medicationActions}>
+                <Pressable
+                  accessibilityLabel={`Confirmar uso de ${medication.nome}`}
                   style={[
-                    styles.checkText,
-                    { color: colors.checkText },
-                    largeText && { fontSize: 16 },
+                    styles.checkButton,
+                    { backgroundColor: colors.checkBg },
                   ]}
+                  onPress={() => handleTaken(medication)}
                 >
-                  OK
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.deleteButton,
-                  { backgroundColor: colors.deleteBg },
-                ]}
-                onPress={() => handleDelete(medication)}
-              >
-                <Ionicons
-                  name="trash-outline"
-                  size={18}
-                  color={darkMode ? "#F87171" : "#E53E3E"}
-                />
-              </Pressable>
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={17}
+                    color={colors.checkText}
+                  />
+                  <Text
+                    style={[
+                      styles.checkText,
+                      { color: colors.checkText },
+                      largeText && { fontSize: 15 },
+                    ]}
+                  >
+                    Tomei
+                  </Text>
+                </Pressable>
+                <View style={styles.iconActions}>
+                  <Pressable
+                    accessibilityLabel={`Editar ${medication.nome}`}
+                    style={[
+                      styles.editButton,
+                      { backgroundColor: colors.editBg },
+                    ]}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/adicionar",
+                        params: { id: String(medication.id) },
+                      })
+                    }
+                  >
+                    <Ionicons
+                      name="create-outline"
+                      size={18}
+                      color="#2F80ED"
+                    />
+                  </Pressable>
+                  <Pressable
+                    accessibilityLabel={`Excluir ${medication.nome}`}
+                    style={[
+                      styles.deleteButton,
+                      { backgroundColor: colors.deleteBg },
+                    ]}
+                    onPress={() => handleDelete(medication)}
+                  >
+                    <Ionicons
+                      name="trash-outline"
+                      size={18}
+                      color={darkMode ? "#F87171" : "#E53E3E"}
+                    />
+                  </Pressable>
+                </View>
+              </View>
             </View>
           ))}
 
@@ -356,53 +436,6 @@ export default function HomeScreen() {
           </Card>
         </View>
 
-        <View style={styles.columnWrapper}>
-          <Card>
-            <View style={ps.row}>
-              <Text
-                style={[
-                  ps.cardTitle,
-                  styles.rowTitle,
-                  largeText && { fontSize: 20 },
-                ]}
-              >
-                Lembretes
-              </Text>
-              <Pressable onPress={() => router.push("/agenda")}>
-                <Text style={styles.link}>Agenda</Text>
-              </Pressable>
-            </View>
-            {reminders.slice(0, 2).map((reminder) => (
-              <View key={reminder.id} style={styles.compactItem}>
-                <View
-                  style={[
-                    styles.reminderBadge,
-                    { backgroundColor: colors.reminderBg },
-                  ]}
-                >
-                  <Text
-                    style={[styles.reminderDate, largeText && { fontSize: 15 }]}
-                  >
-                    {reminder.horario}
-                  </Text>
-                </View>
-                <View style={styles.compactInfo}>
-                  <Text
-                    style={[
-                      styles.itemTitle,
-                      { color: colors.itemTitle, fontSize: fs.item },
-                    ]}
-                  >
-                    {reminder.titulo}
-                  </Text>
-                  <Text style={[ps.small, largeText && { fontSize: fs.small }]}>
-                    {reminder.descricao}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </Card>
-        </View>
       </View>
     </PharmaScreen>
   );
@@ -415,7 +448,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     padding: 20,
-    paddingBottom: 80,
+    paddingBottom: 22,
     marginTop: 18,
   },
   heroCopy: {
@@ -483,13 +516,26 @@ const styles = StyleSheet.create({
   },
   heroPanel: {
     minWidth: 0,
-    minHeight: 150,
+    minHeight: 132,
     justifyContent: "center",
     borderWidth: 1,
     borderRadius: 12,
     gap: 8,
     padding: 18,
-    marginTop: 10,
+  },
+  summarySection: {
+    gap: 10,
+  },
+  summaryHeading: {
+    gap: 2,
+  },
+  summaryTitle: {
+    fontSize: 19,
+    fontWeight: "900",
+  },
+  summaryCaption: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   panelTitle: {
     fontSize: 20,
@@ -500,7 +546,6 @@ const styles = StyleSheet.create({
   },
   stats: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: 10,
   },
   twoColumns: {
@@ -524,14 +569,16 @@ const styles = StyleSheet.create({
   medicationItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
+    minHeight: 82,
+    paddingVertical: 5,
   },
   timeBox: {
     alignItems: "center",
     justifyContent: "center",
-    width: 58,
-    height: 48,
-    borderRadius: 8,
+    width: 56,
+    height: 56,
+    borderRadius: 10,
   },
   timeText: {
     color: "#2F80ED",
@@ -539,21 +586,50 @@ const styles = StyleSheet.create({
   },
   medicationInfo: {
     flex: 1,
+    minWidth: 0,
+    gap: 3,
   },
   itemTitle: {
     fontWeight: "800",
   },
   checkButton: {
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    minHeight: 34,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    borderRadius: 9,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
   },
   checkText: {
+    fontSize: 12,
     fontWeight: "900",
   },
+  medicationActions: {
+    width: 82,
+    gap: 6,
+  },
+  iconActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 6,
+  },
+  editButton: {
+    flex: 1,
+    minHeight: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 9,
+    padding: 7,
+  },
   deleteButton: {
-    borderRadius: 8,
-    padding: 10,
+    flex: 1,
+    minHeight: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 9,
+    padding: 7,
   },
   compactItem: {
     flexDirection: "row",
@@ -574,18 +650,5 @@ const styles = StyleSheet.create({
   statusDot: {
     fontWeight: "900",
     fontSize: 14,
-  },
-  reminderBadge: {
-    minWidth: 46,
-    height: 36,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 6,
-  },
-  reminderDate: {
-    color: "#2F80ED",
-    fontWeight: "900",
-    fontSize: 13,
   },
 });

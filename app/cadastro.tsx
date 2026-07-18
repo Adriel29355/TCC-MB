@@ -1,44 +1,81 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router } from "expo-router";
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { Card, PharmaScreen, SectionHeader, usePharmaStyles } from '@/components/pharma-layout';
-import { useAppContext } from '@/contexts/AppContext';
-import { registerUser } from '@/lib/pharmalife';
+import { FieldError, INVALID_INPUT_STYLE } from "@/components/field-error";
+import { PasswordInput } from "@/components/password-input";
+import {
+  Card,
+  PharmaScreen,
+  SectionHeader,
+  usePharmaStyles,
+} from "@/components/pharma-layout";
+import { useAppContext } from "@/contexts/AppContext";
+import { registerUser } from "@/lib/pharmalife";
+import {
+  FIELD_LIMITS,
+  hasValidationErrors,
+  validateAge,
+  validateEmail,
+  validateHealthCondition,
+  validateNewPassword,
+  validatePersonName,
+} from "@/lib/validation";
+
+type RegistrationErrors = {
+  nome: string;
+  idade: string;
+  comorbidade: string;
+  email: string;
+  senha: string;
+  confirmarSenha: string;
+};
+
+const EMPTY_ERRORS: RegistrationErrors = {
+  nome: "",
+  idade: "",
+  comorbidade: "",
+  email: "",
+  senha: "",
+  confirmarSenha: "",
+};
 
 export default function CadastroScreen() {
-  const [nome, setNome] = useState('');
-  const [idade, setIdade] = useState('');
-  const [comorbidade, setComorbidade] = useState('');
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
-  const [confirmarSenha, setConfirmarSenha] = useState('');
-  const [message, setMessage] = useState('');
+  const [nome, setNome] = useState("");
+  const [idade, setIdade] = useState("");
+  const [comorbidade, setComorbidade] = useState("");
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
+  const [errors, setErrors] = useState<RegistrationErrors>(EMPTY_ERRORS);
+  const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const ps = usePharmaStyles();
   const { darkMode } = useAppContext();
-  const placeholderColor = darkMode ? '#7FA8C8' : '#6D8AA4';
+  const placeholderColor = darkMode ? "#7FA8C8" : "#6D8AA4";
+
+  function updateError(field: keyof RegistrationErrors, error: string) {
+    setErrors((current) => ({ ...current, [field]: error }));
+  }
 
   async function handleRegister() {
-    setMessage('');
+    setMessage("");
     setSuccess(false);
-
-    if (!nome.trim() || !idade.trim() || !email.trim() || !senha.trim() || !confirmarSenha.trim()) {
-      setMessage('Preencha nome, idade, e-mail, senha e confirmacao.');
-      return;
-    }
-
-    if (senha !== confirmarSenha) {
-      setMessage('As senhas precisam ser iguais.');
-      return;
-    }
+    const nextErrors: RegistrationErrors = {
+      nome: validatePersonName(nome),
+      idade: validateAge(idade),
+      comorbidade: validateHealthCondition(comorbidade),
+      email: validateEmail(email),
+      senha: validateNewPassword(senha),
+      confirmarSenha:
+        senha === confirmarSenha ? "" : "As senhas precisam ser iguais.",
+    };
+    if (!confirmarSenha) nextErrors.confirmarSenha = "Confirme a senha.";
+    setErrors(nextErrors);
+    if (hasValidationErrors(nextErrors)) return;
 
     const parsedAge = Number(idade);
-    if (!Number.isInteger(parsedAge) || parsedAge < 1 || parsedAge > 120) {
-      setMessage('Informe uma idade valida entre 1 e 120 anos.');
-      return;
-    }
 
     setLoading(true);
     try {
@@ -50,10 +87,14 @@ export default function CadastroScreen() {
         comorbidade: comorbidade || null,
       });
       setSuccess(true);
-      setMessage('Conta criada com sucesso. Faca login para continuar.');
-      setTimeout(() => router.replace('/login'), 900);
+      setMessage("Conta criada com sucesso. Faca login para continuar.");
+      setTimeout(() => router.replace("/login"), 900);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Nao foi possivel criar a conta.');
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Nao foi possivel criar a conta.",
+      );
     } finally {
       setLoading(false);
     }
@@ -74,61 +115,136 @@ export default function CadastroScreen() {
         </View>
 
         <TextInput
-          style={ps.input}
+          accessibilityLabel="Nome"
+          style={[ps.input, errors.nome && INVALID_INPUT_STYLE]}
           placeholder="Nome de usuario"
           placeholderTextColor={placeholderColor}
           selectionColor="#2F80ED"
           autoComplete="name"
+          autoCapitalize="words"
+          maxLength={FIELD_LIMITS.personName}
           value={nome}
-          onChangeText={setNome}
+          onChangeText={(value) => {
+            setNome(value);
+            if (errors.nome) updateError("nome", validatePersonName(value));
+          }}
+          onBlur={() => updateError("nome", validatePersonName(nome))}
         />
+        <FieldError message={errors.nome} />
         <TextInput
-          style={ps.input}
+          accessibilityLabel="Idade"
+          style={[ps.input, errors.idade && INVALID_INPUT_STYLE]}
           placeholder="Idade"
           placeholderTextColor={placeholderColor}
           selectionColor="#2F80ED"
           keyboardType="number-pad"
+          maxLength={FIELD_LIMITS.age}
           value={idade}
-          onChangeText={setIdade}
+          onChangeText={(value) => {
+            setIdade(value);
+            if (errors.idade) updateError("idade", validateAge(value));
+          }}
+          onBlur={() => updateError("idade", validateAge(idade))}
         />
+        <FieldError message={errors.idade} />
         <TextInput
-          style={ps.input}
+          accessibilityLabel="Comorbidade opcional"
+          style={[ps.input, errors.comorbidade && INVALID_INPUT_STYLE]}
           placeholder="Comorbidade (opcional)"
           placeholderTextColor={placeholderColor}
           selectionColor="#2F80ED"
+          maxLength={FIELD_LIMITS.healthCondition}
           value={comorbidade}
-          onChangeText={setComorbidade}
+          onChangeText={(value) => {
+            setComorbidade(value);
+            if (errors.comorbidade) {
+              updateError(
+                "comorbidade",
+                validateHealthCondition(value),
+              );
+            }
+          }}
+          onBlur={() =>
+            updateError(
+              "comorbidade",
+              validateHealthCondition(comorbidade),
+            )
+          }
         />
+        <FieldError message={errors.comorbidade} />
         <TextInput
-          style={ps.input}
+          accessibilityLabel="E-mail"
+          style={[ps.input, errors.email && INVALID_INPUT_STYLE]}
           placeholder="E-mail"
           placeholderTextColor={placeholderColor}
           selectionColor="#2F80ED"
           keyboardType="email-address"
           autoCapitalize="none"
           autoComplete="email"
+          maxLength={FIELD_LIMITS.email}
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(value) => {
+            setEmail(value);
+            if (errors.email) updateError("email", validateEmail(value));
+          }}
+          onBlur={() => updateError("email", validateEmail(email))}
         />
-        <TextInput
-          style={ps.input}
+        <FieldError message={errors.email} />
+        <PasswordInput
+          accessibilityLabel="Senha"
+          style={[ps.input, errors.senha && INVALID_INPUT_STYLE]}
           placeholder="Senha"
           placeholderTextColor={placeholderColor}
           selectionColor="#2F80ED"
-          secureTextEntry
           autoComplete="password-new"
+          maxLength={FIELD_LIMITS.password}
           value={senha}
-          onChangeText={setSenha}
+          onChangeText={(value) => {
+            setSenha(value);
+            if (errors.senha) updateError("senha", validateNewPassword(value));
+            if (errors.confirmarSenha && confirmarSenha) {
+              updateError(
+                "confirmarSenha",
+                value === confirmarSenha ? "" : "As senhas precisam ser iguais.",
+              );
+            }
+          }}
+          onBlur={() => updateError("senha", validateNewPassword(senha))}
         />
-        <TextInput
-          style={ps.input}
+        <Text style={styles.hint}>
+          Use de 12 a 72 caracteres, com pelo menos uma letra e um numero.
+        </Text>
+        <FieldError message={errors.senha} />
+        <PasswordInput
+          accessibilityLabel="Confirmar senha"
+          style={[ps.input, errors.confirmarSenha && INVALID_INPUT_STYLE]}
           placeholder="Confirmar senha"
           placeholderTextColor={placeholderColor}
           selectionColor="#2F80ED"
-          secureTextEntry
+          autoComplete="password-new"
+          maxLength={FIELD_LIMITS.password}
           value={confirmarSenha}
-          onChangeText={setConfirmarSenha}
+          onChangeText={(value) => {
+            setConfirmarSenha(value);
+            if (errors.confirmarSenha) {
+              updateError(
+                "confirmarSenha",
+                value === senha ? "" : "As senhas precisam ser iguais.",
+              );
+            }
+          }}
+          onBlur={() =>
+            updateError(
+              "confirmarSenha",
+              confirmarSenha
+                ? confirmarSenha === senha
+                  ? ""
+                  : "As senhas precisam ser iguais."
+                : "Confirme a senha.",
+            )
+          }
         />
+        <FieldError message={errors.confirmarSenha} />
 
         {message ? <Text style={[styles.message, success && styles.success]}>{message}</Text> : null}
 
@@ -136,7 +252,7 @@ export default function CadastroScreen() {
           <Text style={ps.primaryButtonText}>{loading ? 'Cadastrando...' : 'Cadastrar'}</Text>
         </Pressable>
 
-        <Pressable onPress={() => router.push('/login')}>
+        <Pressable onPress={() => router.push("/login")}>
           <Text style={styles.link}>Ja tenho conta</Text>
         </Pressable>
       </Card>
@@ -147,33 +263,38 @@ export default function CadastroScreen() {
 const styles = StyleSheet.create({
   brandBox: {
     borderWidth: 1,
-    borderColor: '#D8ECFF',
+    borderColor: "#D8ECFF",
     borderRadius: 8,
-    backgroundColor: '#EAF6FF',
+    backgroundColor: "#EAF6FF",
     gap: 6,
     padding: 14,
   },
   brand: {
-    color: '#2F80ED',
+    color: "#2F80ED",
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: "900",
   },
   brandText: {
-    color: '#4E7393',
+    color: "#4E7393",
     fontSize: 14,
     lineHeight: 20,
   },
   message: {
-    color: '#C2410C',
-    fontWeight: '700',
+    color: "#DC2626",
+    fontWeight: "700",
   },
   success: {
-    color: '#12805C',
+    color: "#12805C",
+  },
+  hint: {
+    color: "#6D8AA4",
+    fontSize: 12,
+    lineHeight: 17,
   },
   link: {
-    color: '#2F80ED',
-    fontWeight: '800',
-    textAlign: 'center',
-    textDecorationLine: 'none',
+    color: "#2F80ED",
+    fontWeight: "800",
+    textAlign: "center",
+    textDecorationLine: "none",
   },
 });
