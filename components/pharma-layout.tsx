@@ -51,7 +51,10 @@ const dark = {
 
 export function PharmaScreen({ children }: PropsWithChildren) {
   const pathname = usePathname();
-  const isAuthScreen = pathname === "/login" || pathname === "/cadastro";
+  const isAuthScreen =
+    pathname === "/login" ||
+    pathname === "/cadastro" ||
+    pathname === "/termos-de-uso";
   const { darkMode } = useAppContext();
 
   return (

@@ -1,4 +1,5 @@
-import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { Href, router } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
@@ -15,7 +16,8 @@ import { registerUser } from "@/lib/pharmalife";
 import {
   FIELD_LIMITS,
   hasValidationErrors,
-  validateAge,
+  birthDateToIso,
+  validateBirthDate,
   validateEmail,
   validateHealthCondition,
   validateNewPassword,
@@ -24,7 +26,7 @@ import {
 
 type RegistrationErrors = {
   nome: string;
-  idade: string;
+  dataNascimento: string;
   comorbidade: string;
   email: string;
   senha: string;
@@ -33,7 +35,7 @@ type RegistrationErrors = {
 
 const EMPTY_ERRORS: RegistrationErrors = {
   nome: "",
-  idade: "",
+  dataNascimento: "",
   comorbidade: "",
   email: "",
   senha: "",
@@ -42,7 +44,7 @@ const EMPTY_ERRORS: RegistrationErrors = {
 
 export default function CadastroScreen() {
   const [nome, setNome] = useState("");
-  const [idade, setIdade] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
   const [comorbidade, setComorbidade] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -51,6 +53,8 @@ export default function CadastroScreen() {
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState("");
   const ps = usePharmaStyles();
   const { darkMode } = useAppContext();
   const placeholderColor = darkMode ? "#7FA8C8" : "#6D8AA4";
@@ -64,7 +68,7 @@ export default function CadastroScreen() {
     setSuccess(false);
     const nextErrors: RegistrationErrors = {
       nome: validatePersonName(nome),
-      idade: validateAge(idade),
+      dataNascimento: validateBirthDate(dataNascimento),
       comorbidade: validateHealthCondition(comorbidade),
       email: validateEmail(email),
       senha: validateNewPassword(senha),
@@ -73,9 +77,11 @@ export default function CadastroScreen() {
     };
     if (!confirmarSenha) nextErrors.confirmarSenha = "Confirme a senha.";
     setErrors(nextErrors);
-    if (hasValidationErrors(nextErrors)) return;
+    if (!acceptedTerms) setTermsError("Aceite os Termos de Uso para continuar.");
+    if (hasValidationErrors(nextErrors) || !acceptedTerms) return;
 
-    const parsedAge = Number(idade);
+    const isoBirthDate = birthDateToIso(dataNascimento);
+    if (!isoBirthDate) return;
 
     setLoading(true);
     try {
@@ -83,7 +89,7 @@ export default function CadastroScreen() {
         nome,
         email,
         senha,
-        idade: parsedAge,
+        dataNascimento: isoBirthDate,
         comorbidade: comorbidade || null,
       });
       setSuccess(true);
@@ -132,21 +138,33 @@ export default function CadastroScreen() {
         />
         <FieldError message={errors.nome} />
         <TextInput
-          accessibilityLabel="Idade"
-          style={[ps.input, errors.idade && INVALID_INPUT_STYLE]}
-          placeholder="Idade"
+          accessibilityLabel="Data de nascimento"
+          style={[ps.input, errors.dataNascimento && INVALID_INPUT_STYLE]}
+          placeholder="Data de nascimento (DD/MM/AAAA)"
           placeholderTextColor={placeholderColor}
           selectionColor="#2F80ED"
           keyboardType="number-pad"
-          maxLength={FIELD_LIMITS.age}
-          value={idade}
+          maxLength={FIELD_LIMITS.birthDate}
+          value={dataNascimento}
           onChangeText={(value) => {
-            setIdade(value);
-            if (errors.idade) updateError("idade", validateAge(value));
+            const digits = value.replace(/\D/g, "").slice(0, 8);
+            const formatted = [
+              digits.slice(0, 2),
+              digits.slice(2, 4),
+              digits.slice(4, 8),
+            ]
+              .filter(Boolean)
+              .join("/");
+            setDataNascimento(formatted);
+            if (errors.dataNascimento) {
+              updateError("dataNascimento", validateBirthDate(formatted));
+            }
           }}
-          onBlur={() => updateError("idade", validateAge(idade))}
+          onBlur={() =>
+            updateError("dataNascimento", validateBirthDate(dataNascimento))
+          }
         />
-        <FieldError message={errors.idade} />
+        <FieldError message={errors.dataNascimento} />
         <TextInput
           accessibilityLabel="Comorbidade opcional"
           style={[ps.input, errors.comorbidade && INVALID_INPUT_STYLE]}
@@ -246,6 +264,37 @@ export default function CadastroScreen() {
         />
         <FieldError message={errors.confirmarSenha} />
 
+        <View style={styles.termsRow}>
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityLabel="Aceitar os Termos de Uso"
+            accessibilityState={{ checked: acceptedTerms }}
+            hitSlop={8}
+            onPress={() => {
+              setAcceptedTerms((current) => !current);
+              setTermsError("");
+            }}
+          >
+            <Ionicons
+              name={acceptedTerms ? "checkbox" : "square-outline"}
+              size={24}
+              color={acceptedTerms ? "#2F80ED" : placeholderColor}
+            />
+          </Pressable>
+          <Text style={[styles.termsText, darkMode && styles.termsTextDark]}>
+            Li e aceito os{" "}
+            <Text
+              accessibilityRole="link"
+              style={styles.inlineLink}
+              onPress={() => router.push("/termos-de-uso" as Href)}
+            >
+              Termos de Uso
+            </Text>
+            .
+          </Text>
+        </View>
+        <FieldError message={termsError} />
+
         {message ? <Text style={[styles.message, success && styles.success]}>{message}</Text> : null}
 
         <Pressable style={ps.primaryButton} onPress={handleRegister} disabled={loading}>
@@ -290,6 +339,25 @@ const styles = StyleSheet.create({
     color: "#6D8AA4",
     fontSize: 12,
     lineHeight: 17,
+  },
+  termsRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+  },
+  termsText: {
+    color: "#4E7393",
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  termsTextDark: {
+    color: "#7FA8C8",
+  },
+  inlineLink: {
+    color: "#2F80ED",
+    fontWeight: "800",
+    textDecorationLine: "underline",
   },
   link: {
     color: "#2F80ED",

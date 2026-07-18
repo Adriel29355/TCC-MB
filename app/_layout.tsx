@@ -12,7 +12,7 @@ const ignoredWarnings = [
 
 LogBox.ignoreLogs(ignoredWarnings);
 
-const PUBLIC_ROUTES = new Set(["/login", "/cadastro"]);
+const PUBLIC_ROUTES = new Set(["/login", "/cadastro", "/termos-de-uso"]);
 
 function SessionGuard({ children }: PropsWithChildren) {
   const pathname = usePathname();
@@ -55,6 +55,10 @@ export default function Layout() {
         <Stack.Screen name="index" options={{ title: "PharmaLife" }} />
         <Stack.Screen name="login" options={{ title: "Entrar" }} />
         <Stack.Screen name="cadastro" options={{ title: "Criar conta" }} />
+        <Stack.Screen
+          name="termos-de-uso"
+          options={{ title: "Termos de uso" }}
+        />
         <Stack.Screen name="agenda" options={{ title: "Agenda" }} />
         <Stack.Screen name="adicionar" options={{ title: "Adicionar" }} />
         <Stack.Screen name="historico" options={{ title: "Historico" }} />

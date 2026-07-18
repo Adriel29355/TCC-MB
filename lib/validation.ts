@@ -2,7 +2,7 @@ export const FIELD_LIMITS = {
   personName: 80,
   email: 254,
   password: 72,
-  age: 3,
+  birthDate: 10,
   healthCondition: 100,
   medicationName: 100,
   dosage: 60,
@@ -95,13 +95,48 @@ export function validateNewPassword(value: string) {
   return "";
 }
 
-export function validateAge(value: string) {
-  if (!value.trim()) return "Informe a idade.";
-  if (!/^\d{1,3}$/.test(value)) return "Digite apenas numeros na idade.";
-  const age = Number(value);
-  if (!Number.isInteger(age) || age < 1 || age > 120) {
-    return "Informe uma idade entre 1 e 120 anos.";
+export function birthDateToIso(value: string) {
+  const match = value.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
   }
+
+  return `${match[3]}-${match[2]}-${match[1]}`;
+}
+
+export function validateBirthDate(value: string) {
+  if (!value.trim()) return "Informe a data de nascimento.";
+
+  const isoDate = birthDateToIso(value);
+  if (!isoDate) return "Informe uma data valida no formato DD/MM/AAAA.";
+
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const birthDate = new Date(year, month - 1, day);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (birthDate > today) return "A data de nascimento nao pode estar no futuro.";
+
+  const oldestAllowedDate = new Date(
+    today.getFullYear() - 120,
+    today.getMonth(),
+    today.getDate(),
+  );
+  if (birthDate < oldestAllowedDate) {
+    return "A data de nascimento deve corresponder a no maximo 120 anos.";
+  }
+
   return "";
 }
 

@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 
 import {
   FIELD_LIMITS,
+  validateBirthDate,
   validateDosage,
   validateEmail,
   validateHealthCondition,
@@ -407,12 +408,6 @@ function normalizeChronicDiseaseInput(
   };
 }
 
-function birthDateFromAge(age?: number | null) {
-  if (!age || !Number.isFinite(age)) return null;
-  const year = new Date().getFullYear() - age;
-  return `${year}-01-01`;
-}
-
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetchApi(path, init);
 
@@ -498,7 +493,11 @@ export async function loginUser(email: string, senha: string) {
   return user;
 }
 
-export async function registerUser(user: Omit<User, "id">) {
+type RegisterUserInput = Omit<User, "id" | "idade" | "dataNascimento"> & {
+  dataNascimento: string;
+};
+
+export async function registerUser(user: RegisterUserInput) {
   const nome = user.nome.trim();
   const email = user.email.trim();
   const comorbidade = user.comorbidade?.trim() || null;
@@ -507,14 +506,9 @@ export async function registerUser(user: Omit<User, "id">) {
   assertValid(validateEmail(email));
   assertValid(validateNewPassword(user.senha ?? ""));
   assertValid(validateHealthCondition(comorbidade ?? ""));
-  if (
-    !Number.isInteger(user.idade) ||
-    !user.idade ||
-    user.idade < 1 ||
-    user.idade > 120
-  ) {
-    throw new Error("Informe uma idade entre 1 e 120 anos.");
-  }
+  assertValid(
+    validateBirthDate(user.dataNascimento.split("-").reverse().join("/")),
+  );
 
   const response = await fetchApi("/api/usuarios", {
     method: "POST",
@@ -535,9 +529,6 @@ export async function registerUser(user: Omit<User, "id">) {
 
   const createdUser = normalizeUser(await response.json());
   if (!createdUser) throw new Error("O servidor retornou um usuario invalido.");
-  const dataNascimento = birthDateFromAge(user.idade);
-
-  if (!dataNascimento) return createdUser;
 
   const onboardingResponse = await fetchApi(
     `/api/usuarios/${createdUser.id}/onboarding`,
@@ -546,7 +537,7 @@ export async function registerUser(user: Omit<User, "id">) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nome,
-        dataNascimento,
+        dataNascimento: user.dataNascimento,
         comorbidade: comorbidade || "Nao possuo comorbidades",
       }),
     },
