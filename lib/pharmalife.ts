@@ -70,18 +70,26 @@ function throwApiNetworkError(error: unknown): never {
 async function fetchApi(
   path: string,
   init?: RequestInit,
-  options?: { retryNetwork?: boolean },
+  options?: { retryNetwork?: boolean; authToken?: string },
 ) {
   const url = apiUrl(path);
+  const headers = new Headers(init?.headers);
+  const authToken = options?.authToken ?? sessionUser?.authToken;
+
+  if (authToken && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const requestInit = { ...init, headers };
 
   try {
-    return await fetch(url, init);
+    return await fetch(url, requestInit);
   } catch (error) {
     if (options?.retryNetwork && isFetchNetworkError(error)) {
       await wait(700);
 
       try {
-        return await fetch(url, init);
+        return await fetch(url, requestInit);
       } catch (retryError) {
         throwApiNetworkError(retryError);
       }
@@ -96,20 +104,12 @@ export type User = {
   nome: string;
   email: string;
   senha?: string;
+  authToken?: string;
+  foto?: string | null;
+  tipoNotificacao?: string;
   idade?: number | null;
   dataNascimento?: string | null;
   comorbidade?: string | null;
-};
-
-export type ChronicDisease = {
-  id: number;
-  nome: string;
-  observacoes: string | null;
-};
-
-export type ChronicDiseaseInput = {
-  nome: string;
-  observacoes?: string | null;
 };
 
 export type Medication = {
@@ -192,7 +192,8 @@ async function removeStoredUserAsync() {
 function parseStoredUser(value: string | null): User | null {
   if (!value) return null;
   try {
-    return normalizeUser(JSON.parse(value));
+    const user = normalizeUser(JSON.parse(value));
+    return user?.authToken ? user : null;
   } catch {
     return null;
   }
@@ -283,6 +284,9 @@ function normalizeUser(value: unknown): User | null {
     id,
     nome,
     email,
+    authToken: asOptionalString(user.authToken),
+    foto: asOptionalString(user.foto) ?? null,
+    tipoNotificacao: asOptionalString(user.tipoNotificacao) ?? "sistema",
     idade: Number.isFinite(idade) ? idade : null,
     dataNascimento: asOptionalString(user.dataNascimento) ?? null,
     comorbidade: asOptionalString(user.comorbidade) ?? null,
@@ -385,45 +389,6 @@ function normalizeHistoryItem(value: unknown) {
     dataConfirmacao: asOptionalString(item.dataConfirmacao),
     motivoIgnorado: asOptionalString(item.motivoIgnorado),
   } satisfies HistoryItem;
-}
-
-function normalizeChronicDisease(value: unknown): ChronicDisease {
-  const disease = asRecord(value);
-
-  return {
-    id: Number(disease.id),
-    nome: asString(disease.nome).trim(),
-    observacoes: asOptionalString(disease.observacoes)?.trim() || null,
-  };
-}
-
-function normalizeChronicDiseaseInput(
-  input: ChronicDiseaseInput,
-): ChronicDiseaseInput {
-  const nome = input.nome.trim();
-
-  if (!nome) {
-    throw new Error("Informe o nome da doenca cronica.");
-  }
-  assertValid(
-    validateOptionalText(
-      nome,
-      "O nome da doenca cronica",
-      FIELD_LIMITS.healthCondition,
-    ),
-  );
-  assertValid(
-    validateOptionalText(
-      input.observacoes ?? "",
-      "A observacao",
-      FIELD_LIMITS.observation,
-    ),
-  );
-
-  return {
-    nome,
-    observacoes: input.observacoes?.trim() || null,
-  };
 }
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -560,6 +525,7 @@ export async function registerUser(user: RegisterUserInput) {
         comorbidade: comorbidade || "Nao possuo comorbidades",
       }),
     },
+    { authToken: createdUser.authToken },
   );
 
   if (!onboardingResponse.ok) {
@@ -567,11 +533,15 @@ export async function registerUser(user: RegisterUserInput) {
       onboardingResponse,
       "Nao foi possivel completar o cadastro.",
     );
-    const rollbackResponse = await fetchApi(`/api/usuarios/${createdUser.id}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ senhaAtual: user.senha }),
-    }).catch(() => null);
+    const rollbackResponse = await fetchApi(
+      `/api/usuarios/${createdUser.id}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ senhaAtual: user.senha }),
+      },
+      { authToken: createdUser.authToken },
+    ).catch(() => null);
 
     if (!rollbackResponse?.ok) {
       throw new Error(
@@ -586,7 +556,7 @@ export async function registerUser(user: RegisterUserInput) {
   if (!onboardedUser) {
     throw new Error("O servidor retornou um usuario invalido.");
   }
-  return onboardedUser;
+  return { ...onboardedUser, authToken: createdUser.authToken };
 }
 
 export async function fetchMedications(): Promise<Medication[]> {
@@ -1038,70 +1008,6 @@ export async function deleteAccount(senhaAtual: string): Promise<void> {
           ? "Senha atual incorreta."
           : "Nao foi possivel excluir a conta.",
       ),
-    );
-  }
-}
-
-export async function fetchChronicDiseases(): Promise<ChronicDisease[]> {
-  const user = getCurrentUser();
-  if (!user) throw new Error("Usuario nao autenticado.");
-
-  const diseases = await fetchJson<unknown[]>(
-    `/api/usuarios/${user.id}/doencas-cronicas`,
-  );
-
-  return diseases.map(normalizeChronicDisease);
-}
-
-export async function createChronicDisease(
-  input: ChronicDiseaseInput,
-): Promise<ChronicDisease> {
-  const user = getCurrentUser();
-  if (!user) throw new Error("Usuario nao autenticado.");
-
-  const disease = await fetchJson<unknown>(
-    `/api/usuarios/${user.id}/doencas-cronicas`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(normalizeChronicDiseaseInput(input)),
-    },
-  );
-
-  return normalizeChronicDisease(disease);
-}
-
-export async function updateChronicDisease(
-  diseaseId: number,
-  input: ChronicDiseaseInput,
-): Promise<ChronicDisease> {
-  const user = getCurrentUser();
-  if (!user) throw new Error("Usuario nao autenticado.");
-
-  const disease = await fetchJson<unknown>(
-    `/api/usuarios/${user.id}/doencas-cronicas/${diseaseId}`,
-    {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(normalizeChronicDiseaseInput(input)),
-    },
-  );
-
-  return normalizeChronicDisease(disease);
-}
-
-export async function deleteChronicDisease(diseaseId: number): Promise<void> {
-  const user = getCurrentUser();
-  if (!user) throw new Error("Usuario nao autenticado.");
-
-  const response = await fetchApi(
-    `/api/usuarios/${user.id}/doencas-cronicas/${diseaseId}`,
-    { method: "DELETE" },
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      await parseApiError(response, "Erro ao remover doenca cronica."),
     );
   }
 }
