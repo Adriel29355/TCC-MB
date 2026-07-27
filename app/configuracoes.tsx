@@ -1,4 +1,3 @@
-import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -29,7 +28,7 @@ import {
 import {
   clearStoredUser,
   deleteAccount,
-  getStoredUser,
+  getCurrentUser,
   updateProfile,
 } from "@/lib/pharmalife";
 import {
@@ -41,8 +40,8 @@ import {
 } from "@/lib/validation";
 
 export default function ConfiguracoesScreen() {
-  const user = getStoredUser();
-  const [nome, setNome] = useState(user.nome);
+  const user = getCurrentUser();
+  const [nome, setNome] = useState(() => user?.nome ?? "");
   const [senhaAtual, setSenhaAtual] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmarNovaSenha, setConfirmarNovaSenha] = useState("");
@@ -117,7 +116,6 @@ export default function ConfiguracoesScreen() {
     try {
       await clearStoredUser();
       await clearMedicationNotificationsAsync();
-      router.replace("/login");
     } catch (logoutError) {
       setError(
         logoutError instanceof Error
@@ -144,7 +142,6 @@ export default function ConfiguracoesScreen() {
           await deleteAccount(deletePassword);
           await clearMedicationNotificationsAsync();
           await clearStoredUser();
-          router.replace("/login");
         } catch (deleteErrorValue) {
           setDeleteError(
             deleteErrorValue instanceof Error

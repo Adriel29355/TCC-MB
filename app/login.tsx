@@ -41,7 +41,6 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await loginUser(email, senha);
-      router.replace("/");
     } catch (error) {
       setMessage(
         error instanceof Error

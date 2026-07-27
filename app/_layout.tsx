@@ -1,4 +1,4 @@
-import { router, Stack, usePathname } from "expo-router";
+import { Stack } from "expo-router";
 import { PropsWithChildren, useEffect } from "react";
 import { ActivityIndicator, LogBox, StyleSheet, View } from "react-native";
 
@@ -12,39 +12,22 @@ const ignoredWarnings = [
 
 LogBox.ignoreLogs(ignoredWarnings);
 
-const PUBLIC_ROUTES = new Set(["/login", "/cadastro", "/termos-de-uso"]);
-
 function SessionGuard({ children }: PropsWithChildren) {
-  const pathname = usePathname();
-  const { authenticated, sessionReady } = useAppContext();
-  const publicRoute = PUBLIC_ROUTES.has(pathname);
-
-  useEffect(() => {
-    if (!sessionReady) return;
-    if (!authenticated && !publicRoute) router.replace("/login");
-    if (authenticated && publicRoute) router.replace("/");
-  }, [authenticated, publicRoute, sessionReady]);
+  const { authenticated } = useAppContext();
 
   useEffect(() => {
     if (authenticated) initializeNotificationsAsync();
   }, [authenticated]);
 
-  if (!sessionReady || (!authenticated && !publicRoute)) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator color="#2F80ED" size="large" />
-      </View>
-    );
-  }
-
   return children;
 }
 
-export default function Layout() {
+function AppNavigator() {
+  const { authenticated, sessionReady } = useAppContext();
+
   return (
-    <AppProvider>
-      <SessionGuard>
-        <Stack
+    <SessionGuard>
+      <Stack
         screenOptions={{
           headerStyle: { backgroundColor: "#F8FCFF" },
           headerTintColor: "#14324A",
@@ -52,31 +35,50 @@ export default function Layout() {
           contentStyle: { backgroundColor: "#F8FCFF" },
         }}
       >
-        <Stack.Screen name="index" options={{ title: "PharmaLife" }} />
-        <Stack.Screen name="login" options={{ title: "Entrar" }} />
-        <Stack.Screen name="cadastro" options={{ title: "Criar conta" }} />
-        <Stack.Screen
-          name="termos-de-uso"
-          options={{ title: "Termos de uso" }}
-        />
-        <Stack.Screen name="agenda" options={{ title: "Agenda" }} />
-        <Stack.Screen name="adicionar" options={{ title: "Adicionar" }} />
-        <Stack.Screen name="historico" options={{ title: "Historico" }} />
-        <Stack.Screen
-          name="configuracoes"
-          options={{ title: "Configuracoes" }}
-        />
-        <Stack.Screen name="ajuda" options={{ title: "Ajuda" }} />
-        <Stack.Screen name="sobre" options={{ title: "Sobre" }} />
-        <Stack.Screen name="modal" options={{ title: "Atendimentos" }} />
-        </Stack>
-      </SessionGuard>
+        <Stack.Protected guard={authenticated}>
+          <Stack.Screen name="index" options={{ title: "PharmaLife" }} />
+          <Stack.Screen name="agenda" options={{ title: "Agenda" }} />
+          <Stack.Screen name="adicionar" options={{ title: "Adicionar" }} />
+          <Stack.Screen name="historico" options={{ title: "Historico" }} />
+          <Stack.Screen
+            name="configuracoes"
+            options={{ title: "Configuracoes" }}
+          />
+          <Stack.Screen name="ajuda" options={{ title: "Ajuda" }} />
+          <Stack.Screen name="sobre" options={{ title: "Sobre" }} />
+          <Stack.Screen name="modal" options={{ title: "Atendimentos" }} />
+        </Stack.Protected>
+
+        <Stack.Protected guard={!authenticated}>
+          <Stack.Screen name="login" options={{ title: "Entrar" }} />
+          <Stack.Screen name="cadastro" options={{ title: "Criar conta" }} />
+          <Stack.Screen
+            name="termos-de-uso"
+            options={{ title: "Termos de uso" }}
+          />
+        </Stack.Protected>
+      </Stack>
+
+      {!sessionReady ? (
+        <View style={styles.loading}>
+          <ActivityIndicator color="#2F80ED" size="large" />
+        </View>
+      ) : null}
+    </SessionGuard>
+  );
+}
+
+export default function Layout() {
+  return (
+    <AppProvider>
+      <AppNavigator />
     </AppProvider>
   );
 }
 
 const styles = StyleSheet.create({
   loading: {
+    ...StyleSheet.absoluteFillObject,
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
