@@ -128,6 +128,21 @@ function toLocalDateTime(date: Date) {
   )}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
+function hasContinuousTreatmentEndDate(dataInicio?: string, dataFim?: string) {
+  if (dataFim?.startsWith("2100-12-31")) return true;
+  if (!dataInicio || !dataFim) return false;
+
+  const startDate = new Date(dataInicio);
+  const endDate = new Date(dataFim);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return false;
+  }
+
+  const expectedEndDate = new Date(startDate);
+  expectedEndDate.setFullYear(expectedEndDate.getFullYear() + 1);
+  return Math.abs(endDate.getTime() - expectedEndDate.getTime()) < 60_000;
+}
+
 export default function AdicionarScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const rawMedicationId = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -176,7 +191,12 @@ export default function AdicionarScreen() {
         setDosagem(item.descricao);
         setHorario(item.agenda?.horario ?? "08:00");
         setFrequencia(medicationFrequency(item.tipo));
-        if (item.agenda?.dataFim?.startsWith("2100-12-31")) {
+        if (
+          hasContinuousTreatmentEndDate(
+            item.agenda?.dataInicio,
+            item.agenda?.dataFim,
+          )
+        ) {
           setDuracao("continuous");
           setDataFimPersonalizada("");
         } else {
@@ -233,7 +253,7 @@ export default function AdicionarScreen() {
     let treatmentEnd: Date | null = null;
     let endDateError = "";
     if (duracao === "continuous") {
-      treatmentEnd = new Date(2100, 11, 31, 23, 59, 59);
+      treatmentEnd = null;
     } else if (duracao === "custom") {
       treatmentEnd = customEndDate(dataFimPersonalizada);
       if (!treatmentEnd) {
@@ -267,7 +287,7 @@ export default function AdicionarScreen() {
         horario,
         tipo: frequencia,
         complemento: observacao,
-        dataFim: treatmentEnd ? toLocalDateTime(treatmentEnd) : undefined,
+        dataFim: treatmentEnd ? toLocalDateTime(treatmentEnd) : null,
       };
       if (editing && !medication) {
         setError("Nao foi possivel identificar o medicamento para editar.");

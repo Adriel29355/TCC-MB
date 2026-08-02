@@ -134,7 +134,7 @@ export type MedicationInput = {
   tipo: string;
   complemento?: string;
   horario: string;
-  dataFim?: string;
+  dataFim?: string | null;
 };
 
 export type HistoryItem = {
@@ -325,9 +325,14 @@ function toLocalDateTimeString(date: Date) {
   )}`;
 }
 
-function normalizeTreatmentEndDate(value: string | undefined, startDate: Date) {
+function normalizeTreatmentEndDate(
+  value: string | null | undefined,
+  startDate: Date,
+) {
   if (!value) {
-    return toLocalDateTimeString(new Date(2100, 11, 31, 23, 59, 59));
+    const endDate = new Date(startDate);
+    endDate.setFullYear(endDate.getFullYear() + 1);
+    return toLocalDateTimeString(endDate);
   }
 
   const match = value.match(
@@ -778,9 +783,12 @@ export async function updateMedication(
   const dataInicio = existing.agenda.dataInicio ?? toLocalDateTimeString(now);
   const previousDataFim =
     existing.agenda.dataFim ?? normalizeTreatmentEndDate(undefined, now);
-  const dataFim = input.dataFim
-    ? normalizeTreatmentEndDate(input.dataFim, now)
-    : previousDataFim;
+  const dataFim =
+    input.dataFim === null
+      ? normalizeTreatmentEndDate(undefined, now)
+      : input.dataFim
+        ? normalizeTreatmentEndDate(input.dataFim, now)
+        : previousDataFim;
   const agendaId = existing.agenda.id;
   const previousAgendaPayload = {
     nome: existing.agenda.nome ?? existing.nome,
