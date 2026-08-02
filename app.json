@@ -37,7 +37,10 @@
         {
           "icon": "./assets/images/notification-icon.png",
           "color": "#2F80ED",
-          "defaultChannel": "medication-reminders-v3"
+          "defaultChannel": "medication-reminders-v5",
+          "sounds": [
+            "./assets/sounds/medication_reminder.wav"
+          ]
         }
       ],
       [

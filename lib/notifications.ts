@@ -3,7 +3,8 @@ import { Linking, Platform } from "react-native";
 
 import type { Medication } from "./pharmalife";
 
-const MEDICATION_CHANNEL_ID = "medication-reminders-v3";
+const MEDICATION_CHANNEL_ID = "medication-reminders-v5";
+const MEDICATION_NOTIFICATION_SOUND = "medication_reminder.wav";
 const BRAND_BLUE = "#2F80ED";
 const SCHEDULING_HORIZON_DAYS = 30;
 const MAX_NOTIFICATIONS_PER_MEDICATION = 100;
@@ -33,7 +34,7 @@ async function configureAndroidChannelAsync() {
     name: "Lembretes de medicamentos",
     description: "Avisos dos horarios cadastrados para os medicamentos.",
     importance: Notifications.AndroidImportance.HIGH,
-    sound: "default",
+    sound: MEDICATION_NOTIFICATION_SOUND,
     vibrationPattern: [0, 250, 250, 250],
     enableVibrate: true,
     enableLights: true,
@@ -170,7 +171,7 @@ function medicationNotificationContent(
     title: `Hora de tomar ${medication.nome}`,
     subtitle: "PharmaLife",
     body: dosage ? `Dosagem: ${dosage}` : "Confira a dosagem cadastrada.",
-    sound: "default" as const,
+    sound: MEDICATION_NOTIFICATION_SOUND,
     color: BRAND_BLUE,
     priority: Notifications.AndroidNotificationPriority.HIGH,
     data: {

@@ -55,6 +55,12 @@ function formatStoredBirthDate(value?: string | null) {
   return match ? `${match[3]}/${match[2]}/${match[1]}` : "";
 }
 
+const COMPACT_COMORBIDITY_OPTIONS = [
+  ...COMORBIDITY_OPTIONS.slice(0, 8),
+  OTHER_COMORBIDITY,
+  NO_COMORBIDITIES,
+];
+
 export default function ConfiguracoesScreen() {
   const user = getCurrentUser();
   const [nome, setNome] = useState(() => user?.nome ?? "");
@@ -74,6 +80,7 @@ export default function ConfiguracoesScreen() {
   const [healthMessage, setHealthMessage] = useState("");
   const [healthError, setHealthError] = useState("");
   const [healthLoading, setHealthLoading] = useState(false);
+  const [showAllComorbidities, setShowAllComorbidities] = useState(false);
   const [senhaAtual, setSenhaAtual] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmarNovaSenha, setConfirmarNovaSenha] = useState("");
@@ -99,6 +106,14 @@ export default function ConfiguracoesScreen() {
   const optionTitleColor = darkMode ? "#C8E0F4" : "#14324A";
   const successColor = darkMode ? "#34D399" : "#12805C";
   const errorColor = darkMode ? "#F87171" : "#DC2626";
+  const visibleComorbidityOptions = showAllComorbidities
+    ? [...COMORBIDITY_OPTIONS]
+    : [
+        ...new Set([
+          ...COMPACT_COMORBIDITY_OPTIONS,
+          ...selectedComorbidities,
+        ]),
+      ];
 
   useEffect(() => {
     const refreshPermission = () => {
@@ -244,7 +259,26 @@ export default function ConfiguracoesScreen() {
       />
 
       <Card>
-        <Text style={ps.cardTitle}>Editar nome e senha</Text>
+        <Text style={ps.cardTitle}>Dados da conta</Text>
+        <Text style={ps.small}>
+          Consulte seu e-mail e altere seu nome ou senha.
+        </Text>
+
+        <Text style={[styles.fieldLabel, { color: optionTitleColor }]}>E-mail</Text>
+        <TextInput
+          accessibilityLabel="E-mail da conta"
+          accessibilityHint="Este e-mail nao pode ser alterado nesta tela"
+          style={[
+            ps.input,
+            styles.readOnlyInput,
+            darkMode && styles.readOnlyInputDark,
+          ]}
+          value={user?.email ?? ""}
+          editable={false}
+          selectTextOnFocus
+        />
+        <Text style={ps.small}>E-mail usado para entrar no PharmaLife.</Text>
+
         <TextInput
           style={[ps.input, fieldErrors.nome && INVALID_INPUT_STYLE]}
           placeholder="Nome"
@@ -413,15 +447,27 @@ export default function ConfiguracoesScreen() {
         <FieldError message={healthErrors.dataNascimento} />
 
         <View style={styles.comorbiditySection}>
-          <Text style={[styles.fieldTitle, { color: optionTitleColor }]}>
-            Comorbidades
-          </Text>
+          <View style={styles.comorbidityHeading}>
+            <Text style={[styles.fieldTitle, { color: optionTitleColor }]}>
+              Comorbidades
+            </Text>
+            {selectedComorbidities.length > 0 ? (
+              <Text
+                style={[
+                  styles.selectedCount,
+                  darkMode && styles.selectedCountDark,
+                ]}
+              >
+                {selectedComorbidities.length} selecionada(s)
+              </Text>
+            ) : null}
+          </View>
           <Text style={ps.small}>
             Selecione quantas opcoes quiser. Esse dado e opcional.
           </Text>
 
           <View style={styles.comorbidityOptions}>
-            {COMORBIDITY_OPTIONS.map((option) => {
+            {visibleComorbidityOptions.map((option) => {
               const selected = selectedComorbidities.includes(option);
               return (
                 <Pressable
@@ -448,6 +494,22 @@ export default function ConfiguracoesScreen() {
               );
             })}
           </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showAllComorbidities }}
+            style={[
+              styles.showOptionsButton,
+              darkMode && styles.showOptionsButtonDark,
+            ]}
+            onPress={() => setShowAllComorbidities((current) => !current)}
+          >
+            <Text style={styles.showOptionsText}>
+              {showAllComorbidities
+                ? "Mostrar menos opcoes"
+                : `Ver todas as ${COMORBIDITY_OPTIONS.length} opcoes`}
+            </Text>
+          </Pressable>
 
           <TextInput
             accessibilityLabel="Outra comorbidade"
@@ -657,25 +719,57 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 14,
   },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: "800",
+    marginBottom: -5,
+  },
+  readOnlyInput: {
+    backgroundColor: "#F1F7FC",
+    color: "#4E7393",
+  },
+  readOnlyInputDark: {
+    backgroundColor: "#0B1825",
+    color: "#7FA8C8",
+  },
   comorbiditySection: {
     gap: 10,
+  },
+  comorbidityHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
   },
   fieldTitle: {
     fontSize: 16,
     fontWeight: "800",
   },
+  selectedCount: {
+    borderRadius: 999,
+    backgroundColor: "#EAF6FF",
+    color: "#2F80ED",
+    fontSize: 11,
+    fontWeight: "800",
+    overflow: "hidden",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  selectedCountDark: {
+    backgroundColor: "#0D2238",
+  },
   comorbidityOptions: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 6,
   },
   comorbidityOption: {
     borderWidth: 1,
     borderColor: "#B8DEFF",
     borderRadius: 999,
     backgroundColor: "#F8FCFF",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
   },
   comorbidityOptionDark: {
     borderColor: "#1E3448",
@@ -687,7 +781,7 @@ const styles = StyleSheet.create({
   },
   comorbidityOptionText: {
     color: "#4E7393",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
   },
   comorbidityOptionTextDark: {
@@ -695,6 +789,23 @@ const styles = StyleSheet.create({
   },
   comorbidityOptionTextSelected: {
     color: "#FFFFFF",
+  },
+  showOptionsButton: {
+    alignSelf: "flex-start",
+    minHeight: 34,
+    justifyContent: "center",
+    borderRadius: 8,
+    backgroundColor: "#EAF6FF",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  showOptionsText: {
+    color: "#2F80ED",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  showOptionsButtonDark: {
+    backgroundColor: "#0D2238",
   },
   optionRow: {
     flexDirection: "row",

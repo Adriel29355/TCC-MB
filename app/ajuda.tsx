@@ -19,7 +19,7 @@ const steps = [
   },
   {
     title: "3. Marque como tomado",
-    text: "No inicio, toque em OK quando tomar um medicamento. O historico sera salvo automaticamente.",
+    text: "No inicio, toque em Tomei quando usar o medicamento. Se o horario passar, resolva a pendencia no historico.",
   },
   {
     title: "4. Use letras grandes",

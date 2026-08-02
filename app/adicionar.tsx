@@ -61,7 +61,19 @@ const FREQUENCIES = [
   },
 ] as const;
 
+const DURATION_OPTIONS = [
+  { value: "continuous", label: "Uso continuo" },
+  { value: "1", label: "1 dia" },
+  { value: "3", label: "3 dias" },
+  { value: "5", label: "5 dias" },
+  { value: "7", label: "7 dias" },
+  { value: "14", label: "14 dias" },
+  { value: "30", label: "30 dias" },
+  { value: "custom", label: "Data personalizada" },
+] as const;
+
 type MedicationFrequency = (typeof FREQUENCIES)[number]["value"];
+type TreatmentDuration = (typeof DURATION_OPTIONS)[number]["value"];
 
 function medicationFrequency(value: string): MedicationFrequency {
   const normalized = value
@@ -79,7 +91,42 @@ type MedicationErrors = {
   dosagem: string;
   horario: string;
   observacao: string;
+  dataFim: string;
 };
+
+function formatStoredDate(value?: string) {
+  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : "";
+}
+
+function formatInputDate(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  return [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)]
+    .filter(Boolean)
+    .join("/");
+}
+
+function customEndDate(value: string) {
+  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+  const date = new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
+  date.setHours(23, 59, 59, 0);
+  if (
+    date.getFullYear() !== Number(match[3]) ||
+    date.getMonth() !== Number(match[2]) - 1 ||
+    date.getDate() !== Number(match[1])
+  ) {
+    return null;
+  }
+  return date;
+}
+
+function toLocalDateTime(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate(),
+  )}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
 
 export default function AdicionarScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -93,6 +140,8 @@ export default function AdicionarScreen() {
   const [horario, setHorario] = useState("08:00");
   const [frequencia, setFrequencia] =
     useState<MedicationFrequency>("Diario");
+  const [duracao, setDuracao] = useState<TreatmentDuration>("continuous");
+  const [dataFimPersonalizada, setDataFimPersonalizada] = useState("");
   const [observacao, setObservacao] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -101,6 +150,7 @@ export default function AdicionarScreen() {
     dosagem: "",
     horario: "",
     observacao: "",
+    dataFim: "",
   });
   const ps = usePharmaStyles();
   const { darkMode } = useAppContext();
@@ -126,6 +176,13 @@ export default function AdicionarScreen() {
         setDosagem(item.descricao);
         setHorario(item.agenda?.horario ?? "08:00");
         setFrequencia(medicationFrequency(item.tipo));
+        if (item.agenda?.dataFim?.startsWith("2100-12-31")) {
+          setDuracao("continuous");
+          setDataFimPersonalizada("");
+        } else {
+          setDuracao("custom");
+          setDataFimPersonalizada(formatStoredDate(item.agenda?.dataFim));
+        }
         setObservacao(item.complemento ?? "");
       })
       .catch((loadError) => {
@@ -173,6 +230,21 @@ export default function AdicionarScreen() {
 
   async function handleSave() {
     setError("");
+    let treatmentEnd: Date | null = null;
+    let endDateError = "";
+    if (duracao === "continuous") {
+      treatmentEnd = new Date(2100, 11, 31, 23, 59, 59);
+    } else if (duracao === "custom") {
+      treatmentEnd = customEndDate(dataFimPersonalizada);
+      if (!treatmentEnd) {
+        endDateError = "Informe uma data final valida no formato DD/MM/AAAA.";
+      } else if (treatmentEnd <= new Date()) {
+        endDateError = "A data final precisa ser posterior ao momento atual.";
+      }
+    } else {
+      treatmentEnd = new Date();
+      treatmentEnd.setDate(treatmentEnd.getDate() + Number(duracao));
+    }
     const nextErrors: MedicationErrors = {
       nome: validateMedicationName(nome),
       dosagem: validateDosage(dosagem),
@@ -182,6 +254,7 @@ export default function AdicionarScreen() {
         "A observacao",
         FIELD_LIMITS.medicationObservation,
       ),
+      dataFim: endDateError,
     };
     setErrors(nextErrors);
     if (hasValidationErrors(nextErrors)) return;
@@ -194,6 +267,7 @@ export default function AdicionarScreen() {
         horario,
         tipo: frequencia,
         complemento: observacao,
+        dataFim: treatmentEnd ? toLocalDateTime(treatmentEnd) : undefined,
       };
       if (editing && !medication) {
         setError("Nao foi possivel identificar o medicamento para editar.");
@@ -438,6 +512,67 @@ export default function AdicionarScreen() {
         </View>
 
         <View style={styles.field}>
+          <FieldLabel icon="calendar-outline">Duracao do tratamento</FieldLabel>
+          <Text style={[styles.durationHint, { color: colors.muted }]}>
+            As notificacoes e pendencias param automaticamente ao final.
+          </Text>
+          <View accessibilityRole="radiogroup" style={styles.durationOptions}>
+            {DURATION_OPTIONS.map((option) => {
+              const selected = duracao === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  style={({ pressed }) => [
+                    styles.durationOption,
+                    {
+                      backgroundColor: selected
+                        ? colors.selectedBg
+                        : colors.optionBg,
+                      borderColor: selected ? "#2F80ED" : colors.optionBorder,
+                      opacity: pressed ? 0.75 : 1,
+                    },
+                  ]}
+                  onPress={() => {
+                    setDuracao(option.value);
+                    setErrors((current) => ({ ...current, dataFim: "" }));
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.durationOptionText,
+                      { color: selected ? "#2F80ED" : colors.label },
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {duracao === "custom" ? (
+            <TextInput
+              accessibilityLabel="Data final do tratamento"
+              style={[ps.input, errors.dataFim && INVALID_INPUT_STYLE]}
+              placeholder="Data final (DD/MM/AAAA)"
+              placeholderTextColor={darkMode ? "#55758F" : "#9DBDD8"}
+              keyboardType="number-pad"
+              maxLength={10}
+              value={dataFimPersonalizada}
+              onChangeText={(value) => {
+                setDataFimPersonalizada(formatInputDate(value));
+                if (errors.dataFim) {
+                  setErrors((current) => ({ ...current, dataFim: "" }));
+                }
+              }}
+            />
+          ) : null}
+          <FieldError message={errors.dataFim} />
+        </View>
+
+        <View style={styles.field}>
           <FieldLabel icon="document-text-outline">Observacao</FieldLabel>
           <TextInput
             style={[
@@ -601,6 +736,27 @@ const styles = StyleSheet.create({
   frequencyDescription: {
     fontSize: 11,
     lineHeight: 15,
+  },
+  durationHint: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  durationOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 7,
+  },
+  durationOption: {
+    minHeight: 38,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+  },
+  durationOptionText: {
+    fontSize: 12,
+    fontWeight: "800",
   },
   observationInput: {
     minHeight: 88,

@@ -4,6 +4,7 @@ export const FIELD_LIMITS = {
   password: 72,
   birthDate: 10,
   healthCondition: 100,
+  ignoreReason: 200,
   medicationName: 100,
   dosage: 60,
   medicationObservation: 50,

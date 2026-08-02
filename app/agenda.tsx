@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
@@ -21,20 +21,38 @@ export default function AgendaScreen() {
   const ps = usePharmaStyles();
   const { darkMode } = useAppContext();
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setError("");
     fetchMedications()
-      .then(setMedications)
+      .then((items) => {
+        if (active) setMedications(items);
+      })
       .catch((err) => {
-        setError(
+        if (active) setError(
           err instanceof Error
             ? err.message
             : "Nao foi possivel buscar a agenda.",
         );
       });
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, []));
 
   const timeBoxBg = darkMode ? "#0D2238" : "#EAF6FF";
   const lineBg = darkMode ? "#1E3448" : "#D8ECFF";
+  const now = new Date();
+  const completedMedications = medications.filter((medication) => {
+    if (!medication.agenda?.dataFim) return false;
+    const endDate = new Date(medication.agenda.dataFim);
+    return !Number.isNaN(endDate.getTime()) && endDate < now;
+  });
+  const activeMedications = medications.filter(
+    (medication) =>
+      medication.statusMedicamento !== "INATIVO" &&
+      !completedMedications.some((completed) => completed.id === medication.id),
+  );
 
   return (
     <PharmaScreen>
@@ -46,13 +64,13 @@ export default function AgendaScreen() {
 
       <Card>
         <View style={ps.row}>
-          <Text style={ps.cardTitle}>Medicamentos de hoje</Text>
+          <Text style={ps.cardTitle}>Tratamentos ativos</Text>
           <Pressable onPress={() => router.push("/adicionar")}>
             <Text style={styles.link}>Novo</Text>
           </Pressable>
         </View>
 
-        {medications.map((medication) => (
+        {activeMedications.map((medication) => (
           <View key={medication.id} style={styles.timelineItem}>
             <View style={[styles.line, { backgroundColor: lineBg }]} />
             <View style={[styles.timeBox, { backgroundColor: timeBoxBg }]}>
@@ -88,12 +106,50 @@ export default function AgendaScreen() {
           </View>
         ))}
 
-        {medications.length === 0 && (
+        {activeMedications.length === 0 && (
           <Text style={ps.body}>
-            {error || "Nenhum medicamento cadastrado."}
+            {error || "Nenhum tratamento ativo."}
           </Text>
         )}
       </Card>
+
+      {completedMedications.length > 0 ? (
+        <Card>
+          <Text style={ps.cardTitle}>Tratamentos concluidos</Text>
+          <Text style={ps.small}>
+            O historico foi preservado. Edite um medicamento se precisar
+            prolongar o tratamento.
+          </Text>
+          {completedMedications.map((medication) => (
+            <View key={medication.id} style={styles.completedItem}>
+              <View style={styles.info}>
+                <Text style={ps.cardTitle}>{medication.nome}</Text>
+                <Text style={ps.small}>
+                  Encerrado em{" "}
+                  {medication.agenda?.dataFim
+                    ?.slice(0, 10)
+                    .split("-")
+                    .reverse()
+                    .join("/")}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityLabel={`Editar duracao de ${medication.nome}`}
+                accessibilityRole="button"
+                onPress={() =>
+                  router.push({
+                    pathname: "/adicionar",
+                    params: { id: String(medication.id) },
+                  })
+                }
+                style={styles.editButton}
+              >
+                <Ionicons name="calendar-outline" size={20} color="#2F80ED" />
+              </Pressable>
+            </View>
+          ))}
+        </Card>
+      ) : null}
 
     </PharmaScreen>
   );
@@ -142,5 +198,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 10,
     backgroundColor: "#EAF6FF",
+  },
+  completedItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#D8ECFF",
+    paddingTop: 10,
   },
 });

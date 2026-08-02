@@ -134,6 +134,7 @@ export type MedicationInput = {
   tipo: string;
   complemento?: string;
   horario: string;
+  dataFim?: string;
 };
 
 export type HistoryItem = {
@@ -145,6 +146,7 @@ export type HistoryItem = {
   horario: string;
   status: "PENDENTE" | "CONFIRMADO" | "IGNORADO";
   dataConfirmacao?: string;
+  dataHoraIgnorado?: string;
   motivoIgnorado?: string;
 };
 
@@ -323,6 +325,39 @@ function toLocalDateTimeString(date: Date) {
   )}`;
 }
 
+function normalizeTreatmentEndDate(value: string | undefined, startDate: Date) {
+  if (!value) {
+    return toLocalDateTimeString(new Date(2100, 11, 31, 23, 59, 59));
+  }
+
+  const match = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/,
+  );
+  if (!match) throw new Error("A data final do tratamento e invalida.");
+
+  const endDate = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+    Number(match[4]),
+    Number(match[5]),
+    Number(match[6]),
+  );
+  if (
+    endDate.getFullYear() !== Number(match[1]) ||
+    endDate.getMonth() !== Number(match[2]) - 1 ||
+    endDate.getDate() !== Number(match[3]) ||
+    endDate.getHours() !== Number(match[4]) ||
+    endDate.getMinutes() !== Number(match[5]) ||
+    endDate.getSeconds() !== Number(match[6]) ||
+    endDate <= startDate
+  ) {
+    throw new Error("A data final precisa ser posterior ao inicio do tratamento.");
+  }
+
+  return toLocalDateTimeString(endDate);
+}
+
 function normalizeHistoryStatus(status: unknown): HistoryItem["status"] {
   const normalized = asString(status).trim().toUpperCase();
 
@@ -387,6 +422,11 @@ function normalizeHistoryItem(value: unknown) {
     horario: normalizeTime(item.horario),
     status: normalizeHistoryStatus(item.status),
     dataConfirmacao: asOptionalString(item.dataConfirmacao),
+    dataHoraIgnorado:
+      asOptionalString(item.dataHoraIgnorado) ??
+      (normalizeHistoryStatus(item.status) === "IGNORADO"
+        ? asOptionalString(item.updatedAt ?? item.dataAtualizacao)
+        : undefined),
     motivoIgnorado: asOptionalString(item.motivoIgnorado),
   } satisfies HistoryItem;
 }
@@ -637,10 +677,8 @@ export async function addMedication(
 
   const normalizedHorario = normalizeMedicationInputTime(input.horario);
   const startDate = new Date();
-  const endDate = new Date(startDate);
-  endDate.setFullYear(endDate.getFullYear() + 1);
   const dataInicio = toLocalDateTimeString(startDate);
-  const dataFim = toLocalDateTimeString(endDate);
+  const dataFim = normalizeTreatmentEndDate(input.dataFim, startDate);
   const agenda = await fetchJson<Record<string, unknown>>(
     `/api/usuarios/${user.id}/agenda`,
     {
@@ -737,11 +775,12 @@ export async function updateMedication(
 
   const horario = normalizeMedicationInputTime(input.horario);
   const now = new Date();
-  const defaultEndDate = new Date(now);
-  defaultEndDate.setFullYear(defaultEndDate.getFullYear() + 1);
   const dataInicio = existing.agenda.dataInicio ?? toLocalDateTimeString(now);
-  const dataFim =
-    existing.agenda.dataFim ?? toLocalDateTimeString(defaultEndDate);
+  const previousDataFim =
+    existing.agenda.dataFim ?? normalizeTreatmentEndDate(undefined, now);
+  const dataFim = input.dataFim
+    ? normalizeTreatmentEndDate(input.dataFim, now)
+    : previousDataFim;
   const agendaId = existing.agenda.id;
   const previousAgendaPayload = {
     nome: existing.agenda.nome ?? existing.nome,
@@ -749,7 +788,7 @@ export async function updateMedication(
     observacoes: existing.complemento ?? "",
     horario: existing.agenda.horario ?? horario,
     dataInicio,
-    dataFim,
+    dataFim: previousDataFim,
   };
   const nextAgendaPayload = {
     nome,
@@ -870,26 +909,48 @@ export async function confirmHistoryItem(id: number) {
 
 export async function ignoreHistoryItem(
   id: number,
-  motivoIgnorado = "Outro motivo",
+  motivoIgnorado: string,
 ) {
+  const normalizedReason = motivoIgnorado.trim();
+  if (!normalizedReason) {
+    throw new Error("Informe por que deseja ignorar este medicamento.");
+  }
+  assertValid(
+    validateOptionalText(
+      normalizedReason,
+      "O motivo",
+      FIELD_LIMITS.ignoreReason,
+    ),
+  );
+
   const item = await fetchJson<unknown>(`/api/historico/${id}/ignorar`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ motivoIgnorado }),
+    body: JSON.stringify({ motivoIgnorado: normalizedReason }),
   });
-  return normalizeHistoryItem(item);
+  const normalized = normalizeHistoryItem(item);
+  return {
+    ...normalized,
+    dataHoraIgnorado: normalized.dataHoraIgnorado ?? new Date().toISOString(),
+    motivoIgnorado: normalized.motivoIgnorado ?? normalizedReason,
+  };
 }
 
-export async function markMedicationAsTaken(medication: Medication) {
+async function createPendingMedicationHistory(
+  medication: Medication,
+  occurrenceTime?: string,
+) {
   const agendaId = medication.agenda?.id;
   if (!agendaId) {
     throw new Error("Medicamento sem agenda vinculada.");
   }
 
   const horario =
-    medication.agenda?.horario ?? new Date().toTimeString().slice(0, 5);
+    occurrenceTime ??
+    medication.agenda?.horario ??
+    new Date().toTimeString().slice(0, 5);
 
-  const historico = await fetchJson<Record<string, unknown>>(
+  return fetchJson<Record<string, unknown>>(
     `/api/agenda/${agendaId}/medicamentos/${medication.id}/historico`,
     {
       method: "POST",
@@ -902,6 +963,16 @@ export async function markMedicationAsTaken(medication: Medication) {
         status: "PENDENTE",
       }),
     },
+  );
+}
+
+export async function markMedicationAsTaken(
+  medication: Medication,
+  occurrenceTime?: string,
+) {
+  const historico = await createPendingMedicationHistory(
+    medication,
+    occurrenceTime,
   );
 
   const confirmado = await fetchJson<unknown>(
@@ -919,47 +990,187 @@ export async function markMedicationAsTaken(medication: Medication) {
   return entry;
 }
 
+export async function markMedicationAsIgnored(
+  medication: Medication,
+  motivoIgnorado: string,
+  occurrenceTime?: string,
+) {
+  const historico = await createPendingMedicationHistory(
+    medication,
+    occurrenceTime,
+  );
+  const ignored = await ignoreHistoryItem(Number(historico.id), motivoIgnorado);
+  const entry = {
+    ...ignored,
+    medicationId: medication.id,
+  };
+
+  const history = getStoredHistory();
+  setStoredHistory([entry, ...history]);
+  return entry;
+}
+
+function historyEventDate(item: HistoryItem) {
+  const value =
+    item.status === "IGNORADO"
+      ? item.dataHoraIgnorado ?? item.dataConfirmacao
+      : item.dataConfirmacao;
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function normalizedFrequency(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s/g, "")
+    .toLowerCase();
+}
+
+function scheduledMinutes(medication: Medication) {
+  const time = medication.agenda?.horario?.match(/^(\d{2}):(\d{2})/);
+  const baseMinutes = time ? Number(time[1]) * 60 + Number(time[2]) : 0;
+  const frequency = normalizedFrequency(medication.tipo);
+  const interval =
+    frequency === "8h" || frequency.includes("8em8")
+      ? 8 * 60
+      : frequency === "12h" || frequency.includes("12em12")
+        ? 12 * 60
+        : null;
+
+  if (!interval) return [baseMinutes];
+
+  const times = new Set<number>();
+  for (let offset = 0; offset < 24 * 60; offset += interval) {
+    times.add((baseMinutes + offset) % (24 * 60));
+  }
+  return [...times].sort((left, right) => left - right);
+}
+
+export function medicationOccurrencesForDay(
+  medication: Medication,
+  dayValue: Date,
+) {
+  if (medication.statusMedicamento === "INATIVO") return [];
+
+  const day = new Date(dayValue);
+  day.setHours(0, 0, 0, 0);
+  const agendaStart = medication.agenda?.dataInicio
+    ? new Date(medication.agenda.dataInicio)
+    : null;
+  const agendaEnd = medication.agenda?.dataFim
+    ? new Date(medication.agenda.dataFim)
+    : null;
+  const validStart = agendaStart && !Number.isNaN(agendaStart.getTime());
+  const validEnd = agendaEnd && !Number.isNaN(agendaEnd.getTime());
+
+  const frequency = normalizedFrequency(medication.tipo);
+  if (frequency.startsWith("seman") && validStart) {
+    const reference = new Date(agendaStart);
+    reference.setHours(0, 0, 0, 0);
+    const difference = Math.round(
+      (day.getTime() - reference.getTime()) / 86_400_000,
+    );
+    if (difference < 0 || difference % 7 !== 0) return [];
+  }
+
+  return scheduledMinutes(medication)
+    .map((minutes) => {
+      const occurrence = new Date(day);
+      occurrence.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+      return occurrence;
+    })
+    .filter(
+      (occurrence) =>
+        (!validStart || occurrence >= agendaStart) &&
+        (!validEnd || occurrence <= agendaEnd),
+    );
+}
+
+function expectedDosesInLastSevenDays(medication: Medication, now: Date) {
+  const windowStart = new Date(now);
+  windowStart.setDate(windowStart.getDate() - 6);
+  windowStart.setHours(0, 0, 0, 0);
+
+  const agendaStart = medication.agenda?.dataInicio
+    ? new Date(medication.agenda.dataInicio)
+    : null;
+  const agendaEnd = medication.agenda?.dataFim
+    ? new Date(medication.agenda.dataFim)
+    : null;
+  const firstDay = new Date(windowStart);
+
+  if (agendaStart && !Number.isNaN(agendaStart.getTime()) && agendaStart > firstDay) {
+    firstDay.setFullYear(
+      agendaStart.getFullYear(),
+      agendaStart.getMonth(),
+      agendaStart.getDate(),
+    );
+  }
+  firstDay.setHours(0, 0, 0, 0);
+
+  const lastMoment =
+    agendaEnd && !Number.isNaN(agendaEnd.getTime()) && agendaEnd < now
+      ? agendaEnd
+      : now;
+  if (firstDay > lastMoment) return 0;
+
+  let expected = 0;
+
+  for (const day = new Date(firstDay); day <= lastMoment; day.setDate(day.getDate() + 1)) {
+    expected += medicationOccurrencesForDay(medication, day).filter(
+      (occurrence) => occurrence <= lastMoment,
+    ).length;
+  }
+
+  return expected;
+}
+
 export function adherencePercent(
   medications: Medication[],
   history: HistoryItem[],
 ) {
   const now = new Date();
   const windowStart = new Date(now);
-  windowStart.setDate(windowStart.getDate() - 7);
+  windowStart.setDate(windowStart.getDate() - 6);
+  windowStart.setHours(0, 0, 0, 0);
 
-  const expected = medications.reduce((total, medication) => {
-    const frequency = medication.tipo
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/\s/g, "")
-      .toLowerCase();
-
-    if (frequency === "8h" || frequency.includes("8em8")) return total + 21;
-    if (frequency === "12h" || frequency.includes("12em12")) return total + 14;
-    if (frequency.startsWith("seman")) return total + 1;
-    return total + 7;
-  }, 0);
-  if (expected === 0) return 0;
-
-  const confirmedInWindow = history.filter((item) => {
-    if (item.status !== "CONFIRMADO" || !item.dataConfirmacao) return false;
-    const confirmationDate = new Date(item.dataConfirmacao);
-    const belongsToCurrentMedication = item.medicationId
+  const belongsToCurrentMedication = (item: HistoryItem) =>
+    item.medicationId
       ? medications.some((medication) => medication.id === item.medicationId)
       : medications.some(
           (medication) =>
             medication.nome.trim().toLocaleLowerCase() ===
             item.nome.trim().toLocaleLowerCase(),
         );
-    return (
-      belongsToCurrentMedication &&
-      !Number.isNaN(confirmationDate.getTime()) &&
-      confirmationDate >= windowStart &&
-      confirmationDate <= now
-    );
-  }).length;
 
-  return Math.min(100, Math.round((confirmedInWindow / expected) * 100));
+  const eventsInWindow = history.filter((item) => {
+    const eventDate = historyEventDate(item);
+    return (
+      eventDate &&
+      eventDate >= windowStart &&
+      eventDate <= now &&
+      belongsToCurrentMedication(item)
+    );
+  });
+  const confirmedInWindow = eventsInWindow.filter(
+    (item) => item.status === "CONFIRMADO",
+  ).length;
+  const ignoredInWindow = eventsInWindow.filter(
+    (item) => item.status === "IGNORADO",
+  ).length;
+  const scheduledDoses = medications.reduce(
+    (total, medication) => total + expectedDosesInLastSevenDays(medication, now),
+    0,
+  );
+  const eligibleDoses = Math.max(0, scheduledDoses - ignoredInWindow);
+  if (eligibleDoses === 0) return 0;
+
+  return Math.min(
+    100,
+    Math.round((Math.min(confirmedInWindow, eligibleDoses) / eligibleDoses) * 100),
+  );
 }
 
 export async function updateHealthProfile(
