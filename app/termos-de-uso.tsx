@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
   Card,
@@ -9,35 +9,11 @@ import {
 } from "@/components/pharma-layout";
 import { useAppContext } from "@/contexts/AppContext";
 
-const sections = [
-  {
-    title: "1. Finalidade do aplicativo",
-    text: "O PharmaLife ajuda a organizar medicamentos, horários, lembretes e confirmações de uso. O aplicativo não substitui orientação, diagnóstico, prescrição ou atendimento de profissionais de saúde.",
-  },
-  {
-    title: "2. Cadastro e responsabilidade",
-    text: "Você deve fornecer informações verdadeiras e manter sua senha protegida. Revise nomes, doses e horários cadastrados e siga sempre a prescrição recebida do profissional responsável.",
-  },
-  {
-    title: "3. Lembretes e disponibilidade",
-    text: "Notificações podem sofrer atrasos ou deixar de ser exibidas por falta de internet, bateria, permissões ou configurações do aparelho. Não dependa exclusivamente do aplicativo para usar medicamentos essenciais.",
-  },
-  {
-    title: "4. Dados pessoais",
-    text: "Usamos os dados informados para criar sua conta e oferecer as funções do PharmaLife. Isso pode incluir nome, e-mail, data de nascimento, comorbidades e informações sobre medicamentos. Esses dados devem ser tratados apenas para operação e segurança do serviço, conforme a legislação aplicável.",
-  },
-  {
-    title: "5. Uso adequado",
-    text: "Não use o aplicativo para práticas ilegais, tentar acessar contas de terceiros, interferir no serviço ou inserir conteúdo malicioso. O acesso pode ser limitado quando houver risco a usuários ou ao sistema.",
-  },
-  {
-    title: "6. Exclusão da conta",
-    text: "Você pode excluir sua conta nas configurações. A exclusão remove permanentemente os dados vinculados, inclusive agendas, medicamentos e histórico, ressalvadas obrigações legais de conservação.",
-  },
-  {
-    title: "7. Alterações destes termos",
-    text: "Estes termos podem ser atualizados para refletir mudanças no aplicativo ou em requisitos legais. Quando uma alteração exigir novo consentimento, ela será apresentada antes da continuidade do uso.",
-  },
+const commitments = [
+  "Cadastrar apenas informações verdadeiras, completas e atualizadas.",
+  "Revisar os nomes dos medicamentos, doses e horários antes de salvar qualquer informação.",
+  "Seguir sempre as orientações do médico, farmacêutico ou outro profissional de saúde responsável pelo tratamento.",
+  "Procurar atendimento médico ou farmacêutico em caso de urgência, reação adversa, dúvidas sobre o tratamento ou qualquer situação que exija avaliação profissional.",
 ];
 
 export default function TermsOfUseScreen() {
@@ -48,29 +24,53 @@ export default function TermsOfUseScreen() {
     <PharmaScreen>
       <SectionHeader
         eyebrow="Legal"
-        title="Termos de Uso"
-        subtitle="Última atualização: 18 de julho de 2026."
+        title="Termos de uso da plataforma"
+        subtitle="Leia as condições para usar o PharmaLife com segurança."
       />
 
       <Card>
         <Text style={[styles.intro, darkMode && styles.textDark]}>
-          Ao criar uma conta, você declara que leu e concorda com as condições abaixo.
+          O PharmaLife é uma ferramenta de organização de rotina voltada ao
+          gerenciamento de medicamentos. A plataforma auxilia no registro de
+          medicamentos, horários, lembretes e histórico, mas não substitui
+          orientação médica, consulta com profissionais de saúde, prescrição
+          médica ou atendimento de urgência e emergência.
         </Text>
 
-        {sections.map((section) => (
-          <Text
-            key={section.title}
-            style={[styles.section, darkMode && styles.textDark]}
-          >
-            <Text style={[styles.title, darkMode && styles.titleDark]}>
-              {section.title}{"\n"}
-            </Text>
-            {section.text}
+        <View style={styles.commitments}>
+          <Text style={[styles.section, darkMode && styles.textDark]}>
+            Ao utilizar o PharmaLife, o usuário compromete-se a:
           </Text>
-        ))}
+          {commitments.map((commitment) => (
+            <View key={commitment} style={styles.commitmentRow}>
+              <Text style={[styles.bullet, darkMode && styles.titleDark]}>•</Text>
+              <Text style={[styles.commitmentText, darkMode && styles.textDark]}>
+                {commitment}
+              </Text>
+            </View>
+          ))}
+        </View>
 
-        <Text style={[styles.note, darkMode && styles.textDark]}>
-          Em caso de urgência ou dúvida sobre um tratamento, procure um profissional de saúde ou um serviço de emergência.
+        <Text style={[styles.section, darkMode && styles.textDark]}>
+          As notificações e lembretes disponibilizados pelo PharmaLife possuem
+          caráter exclusivamente auxiliar e podem sofrer limitações em razão do
+          navegador, dispositivo, conexão com a internet, nível de bateria,
+          permissões do sistema operacional ou outros fatores técnicos. Dessa
+          forma, o usuário permanece responsável pelo acompanhamento de seu
+          tratamento.
+        </Text>
+
+        <Text style={[styles.section, darkMode && styles.textDark]}>
+          Recomenda-se que menores de 16 anos e pessoas que necessitem de apoio
+          utilizem a plataforma com o acompanhamento de um responsável legal ou
+          cuidador.
+        </Text>
+
+        <Text style={[styles.section, darkMode && styles.textDark]}>
+          Os dados informados pelo usuário são utilizados para o funcionamento da
+          plataforma, incluindo a exibição da conta, da agenda de medicamentos,
+          dos lembretes, dos recursos de acessibilidade e do histórico de
+          utilização, conforme descrito na Política de Privacidade.
         </Text>
 
         <Pressable style={ps.primaryButton} onPress={() => router.back()}>
@@ -92,16 +92,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
   },
-  title: {
-    color: "#14324A",
-    fontSize: 16,
-    fontWeight: "800",
+  commitments: {
+    gap: 8,
   },
-  note: {
+  commitmentRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 8,
+    paddingLeft: 4,
+  },
+  bullet: {
+    color: "#2F80ED",
+    fontSize: 17,
+    fontWeight: "900",
+    lineHeight: 21,
+  },
+  commitmentText: {
     color: "#4E7393",
-    fontSize: 13,
-    fontStyle: "italic",
-    lineHeight: 19,
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 21,
   },
   textDark: {
     color: "#7FA8C8",

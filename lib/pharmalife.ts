@@ -962,6 +962,46 @@ export function adherencePercent(
   return Math.min(100, Math.round((confirmedInWindow / expected) * 100));
 }
 
+export async function updateHealthProfile(
+  dataNascimento: string,
+  comorbidade: string,
+) {
+  const user = getCurrentUser();
+  if (!user) throw new Error("Usuario nao autenticado.");
+
+  const normalizedComorbidity = comorbidade.trim() || "Nao possuo comorbidades";
+  assertValid(
+    validateBirthDate(dataNascimento.split("-").reverse().join("/")),
+  );
+  assertValid(validateHealthCondition(normalizedComorbidity));
+
+  const response = await fetchApi(`/api/usuarios/${user.id}/onboarding`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      nome: user.nome,
+      dataNascimento,
+      comorbidade: normalizedComorbidity,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(response, "Erro ao atualizar os dados de saude."),
+    );
+  }
+
+  const updatedUser = normalizeUser(await response.json());
+  if (!updatedUser) throw new Error("O servidor retornou um usuario invalido.");
+
+  const sessionUpdate = {
+    ...updatedUser,
+    authToken: updatedUser.authToken ?? user.authToken,
+  };
+  await setStoredUser(sessionUpdate);
+  return sessionUpdate;
+}
+
 export async function updateProfile(
   nome: string,
   senhaAtual: string,

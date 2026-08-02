@@ -18,6 +18,13 @@ import {
 } from "@/components/pharma-layout";
 import { FieldError, INVALID_INPUT_STYLE } from "@/components/field-error";
 import { PasswordInput } from "@/components/password-input";
+import {
+  COMORBIDITY_OPTIONS,
+  formatComorbidities,
+  NO_COMORBIDITIES,
+  OTHER_COMORBIDITY,
+  parseComorbidities,
+} from "@/constants/comorbidities";
 import { useAppContext } from "@/contexts/AppContext";
 import { confirmDialog } from "@/lib/confirm-dialog";
 import {
@@ -29,19 +36,44 @@ import {
   clearStoredUser,
   deleteAccount,
   getCurrentUser,
+  updateHealthProfile,
   updateProfile,
 } from "@/lib/pharmalife";
 import {
   FIELD_LIMITS,
+  birthDateToIso,
   hasValidationErrors,
+  validateBirthDate,
+  validateHealthCondition,
   validateLoginPassword,
   validateNewPassword,
   validatePersonName,
 } from "@/lib/validation";
 
+function formatStoredBirthDate(value?: string | null) {
+  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : "";
+}
+
 export default function ConfiguracoesScreen() {
   const user = getCurrentUser();
   const [nome, setNome] = useState(() => user?.nome ?? "");
+  const [dataNascimento, setDataNascimento] = useState(() =>
+    formatStoredBirthDate(user?.dataNascimento),
+  );
+  const [selectedComorbidities, setSelectedComorbidities] = useState<string[]>(
+    () => parseComorbidities(user?.comorbidade).selected,
+  );
+  const [otherComorbidity, setOtherComorbidity] = useState(
+    () => parseComorbidities(user?.comorbidade).other,
+  );
+  const [healthErrors, setHealthErrors] = useState({
+    dataNascimento: "",
+    comorbidade: "",
+  });
+  const [healthMessage, setHealthMessage] = useState("");
+  const [healthError, setHealthError] = useState("");
+  const [healthLoading, setHealthLoading] = useState(false);
   const [senhaAtual, setSenhaAtual] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmarNovaSenha, setConfirmarNovaSenha] = useState("");
@@ -108,6 +140,54 @@ export default function ConfiguracoesScreen() {
       setError(e instanceof Error ? e.message : "Erro ao atualizar perfil.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function getComorbidityValue() {
+    return formatComorbidities(selectedComorbidities, otherComorbidity);
+  }
+
+  function toggleComorbidity(option: string) {
+    setSelectedComorbidities((current) => {
+      if (option === NO_COMORBIDITIES) {
+        setOtherComorbidity("");
+        return current.includes(NO_COMORBIDITIES) ? [] : [NO_COMORBIDITIES];
+      }
+
+      const withoutNone = current.filter((item) => item !== NO_COMORBIDITIES);
+      return withoutNone.includes(option)
+        ? withoutNone.filter((item) => item !== option)
+        : [...withoutNone, option];
+    });
+    setHealthErrors((current) => ({ ...current, comorbidade: "" }));
+  }
+
+  async function handleSaveHealthProfile() {
+    setHealthMessage("");
+    setHealthError("");
+    const comorbidade = getComorbidityValue();
+    const nextErrors = {
+      dataNascimento: validateBirthDate(dataNascimento),
+      comorbidade: validateHealthCondition(comorbidade),
+    };
+    setHealthErrors(nextErrors);
+    if (hasValidationErrors(nextErrors)) return;
+
+    const isoBirthDate = birthDateToIso(dataNascimento);
+    if (!isoBirthDate) return;
+
+    setHealthLoading(true);
+    try {
+      await updateHealthProfile(isoBirthDate, comorbidade);
+      setHealthMessage("Dados de saude atualizados com sucesso.");
+    } catch (healthUpdateError) {
+      setHealthError(
+        healthUpdateError instanceof Error
+          ? healthUpdateError.message
+          : "Erro ao atualizar os dados de saude.",
+      );
+    } finally {
+      setHealthLoading(false);
     }
   }
 
@@ -289,6 +369,158 @@ export default function ConfiguracoesScreen() {
       </Card>
 
       <Card>
+        <Text style={ps.cardTitle}>Dados de saude</Text>
+        <Text style={ps.small}>
+          Atualize sua data de nascimento e as comorbidades do seu perfil.
+        </Text>
+
+        <TextInput
+          accessibilityLabel="Data de nascimento"
+          style={[
+            ps.input,
+            healthErrors.dataNascimento && INVALID_INPUT_STYLE,
+          ]}
+          placeholder="Data de nascimento (DD/MM/AAAA)"
+          placeholderTextColor={darkMode ? "#3D6480" : "#9DBDD8"}
+          selectionColor="#2F80ED"
+          keyboardType="number-pad"
+          maxLength={FIELD_LIMITS.birthDate}
+          value={dataNascimento}
+          onChangeText={(value) => {
+            const digits = value.replace(/\D/g, "").slice(0, 8);
+            const formatted = [
+              digits.slice(0, 2),
+              digits.slice(2, 4),
+              digits.slice(4, 8),
+            ]
+              .filter(Boolean)
+              .join("/");
+            setDataNascimento(formatted);
+            if (healthErrors.dataNascimento) {
+              setHealthErrors((current) => ({
+                ...current,
+                dataNascimento: validateBirthDate(formatted),
+              }));
+            }
+          }}
+          onBlur={() =>
+            setHealthErrors((current) => ({
+              ...current,
+              dataNascimento: validateBirthDate(dataNascimento),
+            }))
+          }
+        />
+        <FieldError message={healthErrors.dataNascimento} />
+
+        <View style={styles.comorbiditySection}>
+          <Text style={[styles.fieldTitle, { color: optionTitleColor }]}>
+            Comorbidades
+          </Text>
+          <Text style={ps.small}>
+            Selecione quantas opcoes quiser. Esse dado e opcional.
+          </Text>
+
+          <View style={styles.comorbidityOptions}>
+            {COMORBIDITY_OPTIONS.map((option) => {
+              const selected = selectedComorbidities.includes(option);
+              return (
+                <Pressable
+                  key={option}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: selected }}
+                  onPress={() => toggleComorbidity(option)}
+                  style={[
+                    styles.comorbidityOption,
+                    darkMode && styles.comorbidityOptionDark,
+                    selected && styles.comorbidityOptionSelected,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.comorbidityOptionText,
+                      darkMode && styles.comorbidityOptionTextDark,
+                      selected && styles.comorbidityOptionTextSelected,
+                    ]}
+                  >
+                    {option}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <TextInput
+            accessibilityLabel="Outra comorbidade"
+            style={[
+              ps.input,
+              healthErrors.comorbidade && INVALID_INPUT_STYLE,
+            ]}
+            placeholder="Ou descreva outra opcao"
+            placeholderTextColor={darkMode ? "#3D6480" : "#9DBDD8"}
+            selectionColor="#2F80ED"
+            editable={!selectedComorbidities.includes(NO_COMORBIDITIES)}
+            maxLength={FIELD_LIMITS.healthCondition}
+            value={otherComorbidity}
+            onChangeText={(value) => {
+              setOtherComorbidity(value);
+              if (
+                value &&
+                !selectedComorbidities.includes(OTHER_COMORBIDITY)
+              ) {
+                setSelectedComorbidities((current) => [
+                  ...current.filter((item) => item !== NO_COMORBIDITIES),
+                  OTHER_COMORBIDITY,
+                ]);
+              }
+              if (healthErrors.comorbidade) {
+                const selected = selectedComorbidities.filter(
+                  (option) =>
+                    option !== OTHER_COMORBIDITY &&
+                    option !== NO_COMORBIDITIES,
+                );
+                setHealthErrors((current) => ({
+                  ...current,
+                  comorbidade: validateHealthCondition(
+                    [...selected, value.trim()].filter(Boolean).join(", "),
+                  ),
+                }));
+              }
+            }}
+            onBlur={() =>
+              setHealthErrors((current) => ({
+                ...current,
+                comorbidade: validateHealthCondition(getComorbidityValue()),
+              }))
+            }
+          />
+        </View>
+        <FieldError message={healthErrors.comorbidade} />
+
+        {healthMessage ? (
+          <Text style={[styles.feedback, { color: successColor }]}>
+            {healthMessage}
+          </Text>
+        ) : null}
+        {healthError ? (
+          <Text style={[styles.feedback, { color: errorColor }]}>
+            {healthError}
+          </Text>
+        ) : null}
+
+        <Pressable
+          style={ps.primaryButton}
+          onPress={handleSaveHealthProfile}
+          disabled={healthLoading}
+        >
+          {healthLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={ps.primaryButtonText}>Salvar dados de saude</Text>
+          )}
+        </Pressable>
+      </Card>
+
+      <Card>
         <Text style={ps.cardTitle}>Acessibilidade</Text>
 
         <View style={styles.optionRow}>
@@ -424,6 +656,45 @@ const styles = StyleSheet.create({
   feedback: {
     fontWeight: "700",
     fontSize: 14,
+  },
+  comorbiditySection: {
+    gap: 10,
+  },
+  fieldTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  comorbidityOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  comorbidityOption: {
+    borderWidth: 1,
+    borderColor: "#B8DEFF",
+    borderRadius: 999,
+    backgroundColor: "#F8FCFF",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  comorbidityOptionDark: {
+    borderColor: "#1E3448",
+    backgroundColor: "#0D2238",
+  },
+  comorbidityOptionSelected: {
+    borderColor: "#2F80ED",
+    backgroundColor: "#2F80ED",
+  },
+  comorbidityOptionText: {
+    color: "#4E7393",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  comorbidityOptionTextDark: {
+    color: "#A9C8E1",
+  },
+  comorbidityOptionTextSelected: {
+    color: "#FFFFFF",
   },
   optionRow: {
     flexDirection: "row",
